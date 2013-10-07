@@ -176,7 +176,9 @@ class ChordTraining(wx.Frame):
 		f.write("\t%d\t%d\n" % (size.x, size.y))
 		f.write("FontSize:\n")
 		f.write("\t%d\n" % self.fontSize)
-		
+        f.write("SingleThread:\n")
+        f.write("\t%b\n" % self.singleThread)
+        		
 		f.close()
 
 
@@ -413,7 +415,11 @@ lower = \\relative c {
 			lilypondOutputFile = os.path.join(self.directory, "lilypond_outputFile")
 			f = open(lilypondOutputFile,"w")			
 			proc = Popen(["lilypond", "--png", "-dresolution=" + str(self.scoreResolution), "-dpreview", lyfile], stdout=f, cwd=self.directory)
-			f.close()
+			# Do not continue after starting the lilypond process
+            # (useful on slower machines, e.g. raspberryPi 
+            if self.singleThread:
+                proc.wait()
+            f.close()
 			print "rc = %s" % rc
 		except:
 			print "Call to lilypond failed."
