@@ -77,7 +77,7 @@ class ChordTraining(wx.Frame):
 		super(ChordTraining, self).__init__(*args, **kwargs) 
 
 		# Default settings (overridden by settings from file ~/.chord_training/settings, if it exists)
-		#self.pitches = {'C': 1, 'F': 1, 'Bb': 1, 'Eb': 1, 'Ab': 1, 'Db': 1, 'F#': 1, 'B': 1, 'E': 0, 'A': 0, 'D': 0, 'G': 0}
+		# self.pitches = {'C': 1, 'F': 1, 'Bb': 1, 'Eb': 1, 'Ab': 1, 'Db': 1, 'F#': 1, 'B': 1, 'E': 0, 'A': 0, 'D': 0, 'G': 0}
 		self.pitches = collections.OrderedDict()
 		self.pitches['C'] = True
 		self.pitches['F'] = True
@@ -91,7 +91,7 @@ class ChordTraining(wx.Frame):
 		self.pitches['A'] = False
 		self.pitches['D'] = False
 		self.pitches['G'] = False
-		#self.qualities = {'min7': 1, '7': 1, 'Maj7': 1}
+		# self.qualities = {'min7': 1, '7': 1, 'Maj7': 1}
 		self.qualities = collections.OrderedDict()
 		self.qualities['min7'] = True
 		self.qualities['7'] = True
@@ -108,11 +108,11 @@ class ChordTraining(wx.Frame):
 		self.modes['II-V-I'] = False
 		self.modes['V-I'] = False
 
-		self.duration = 5 # s
-		self.durationMin = 1 # s
-		self.durationMax = 10 # s
-		self.elapsedTime = 0 # ms
-		self.refreshPeriod = 500 # ms
+		self.duration = 5  # s
+		self.durationMin = 1  # s
+		self.durationMax = 10  # s
+		self.elapsedTime = 0  # ms
+		self.refreshPeriod = 500  # ms
 
 		# Do not display chord/scale score
 # 		self.displayScore = False
@@ -124,6 +124,10 @@ class ChordTraining(wx.Frame):
 		self.windowSizeX = 500
 		self.windowSizeY = 400
 		
+		# Use only one thread on slower machines 
+		# when generating scores using lilypond
+		self.singleThread = True
+
 		# Default font size for chord names
 		self.fontSize = 64
 		self.fontSizes = collections.OrderedDict()
@@ -154,17 +158,17 @@ class ChordTraining(wx.Frame):
 		self.Centre()
 		self.Show(True)
 		
-	def SaveSettings(self, event = None):
+	def SaveSettings(self, event=None):
 		
 		f = open(self.savefile, "w")
 		
 		f.write("#Chord Training settings\n")
 		f.write("Tones:\n")
 		for tone in self.pitches.keys():
-			f.write("\t%s\t%s\n" %(tone, self.pitches[tone]))
+			f.write("\t%s\t%s\n" % (tone, self.pitches[tone]))
 		f.write("Qualities:\n")
 		for quality in self.qualities.keys():
-			f.write("\t%s\t%s\n" %(quality, self.qualities[quality]))
+			f.write("\t%s\t%s\n" % (quality, self.qualities[quality]))
 		f.write("Mode:\n")
 		for mode in self.modes.keys():
 			if self.modes[mode]:
@@ -176,9 +180,9 @@ class ChordTraining(wx.Frame):
 		f.write("\t%d\t%d\n" % (size.x, size.y))
 		f.write("FontSize:\n")
 		f.write("\t%d\n" % self.fontSize)
-        f.write("SingleThread:\n")
-        f.write("\t%b\n" % self.singleThread)
-        		
+		f.write("SingleThread:\n")
+		f.write("\t%r\n" % self.singleThread)
+				
 		f.close()
 
 
@@ -225,6 +229,11 @@ class ChordTraining(wx.Frame):
 								self.fontSizes[fontSize] = True
 							else:
 								self.fontSizes[fontSize] = False
+					elif context == "SingleThread":
+						if items[0].lower() == 'false':
+							self.singleThread = False
+						else:
+							self.singleThread = True
 						
 		except:
 			pass
@@ -246,7 +255,7 @@ class ChordTraining(wx.Frame):
 				
 		# The duration should be an integer value between durationMin and durationMax
 		if (self.duration < self.durationMin or self.duration > self.durationMax):
-			self.duration = int((self.durationMax - self.durationMin)/2 + 1)
+			self.duration = int((self.durationMax - self.durationMin) / 2 + 1)
 			
 		# Check that the given font size is legal
 		nbFontSizes = 0
@@ -264,26 +273,26 @@ class ChordTraining(wx.Frame):
 					self.fontSizes[fontSize] = False
 			
 	def GenerateImage(self, chord):
-		basisHeader='''
+		basisHeader = '''
 #(set-default-paper-size "a4")
 
 \\version "2.16.2"
 
 \\include "english.ly"
 '''
-		basisUpperBeginning='''
+		basisUpperBeginning = '''
 upper = \\relative c' {
   \\clef treble
   \\key c \\major
   %\\time 4/4
 '''
-		basisUpperContentChord='''  
+		basisUpperContentChord = '''  
   r1
   r
   <chordForm1>1
   <chordForm2>1 
 '''
-		basisContentII_V_I='''  
+		basisContentII_V_I = '''  
   <IIchordForm1>2
   <IIchordForm2>2 
   <VchordForm1>2
@@ -291,31 +300,31 @@ upper = \\relative c' {
   <IchordForm1>2
   <IchordForm2>2
 '''
-		basisContentV_I='''  
+		basisContentV_I = '''  
   <VchordForm1>2
   <VchordForm2>2
   <IchordForm1>2
   <IchordForm2>2
 '''
-		basisUpperEnd='''
+		basisUpperEnd = '''
 }
 '''
-		basisLowerBeginning='''
+		basisLowerBeginning = '''
 lower = \\relative c {
   \\clef bass
   \\key c \\major
   %\\time 4/4
 '''
-		basisLowerContentChord='''  
+		basisLowerContentChord = '''  
   <chordForm1>1
   <chordForm2>1 
   r1
   r
 '''
-		basisLowerEnd='''
+		basisLowerEnd = '''
 }
 '''
-		basisFooter='''
+		basisFooter = '''
 \\score {
   \\new PianoStaff %\\with { \\remove "Staff_symbol_engraver" } 
   <<
@@ -405,7 +414,7 @@ lower = \\relative c {
 
 		try:
 			catOutputFile = os.path.join(self.directory, "cat_outputFile")
-			f = open(catOutputFile,"w")
+			f = open(catOutputFile, "w")
 	
 			rc = call(["cat", lyfile], stdout=f)
 			f.close()
@@ -413,20 +422,21 @@ lower = \\relative c {
 			print "rc = %s" % rc
 			# The lilypond call apparently won't work properly without an explicit stdout redirection...
 			lilypondOutputFile = os.path.join(self.directory, "lilypond_outputFile")
-			f = open(lilypondOutputFile,"w")			
+			f = open(lilypondOutputFile, "w")			
 			proc = Popen(["lilypond", "--png", "-dresolution=" + str(self.scoreResolution), "-dpreview", lyfile], stdout=f, cwd=self.directory)
 			# Do not continue after starting the lilypond process
-            # (useful on slower machines, e.g. raspberryPi 
-            if self.singleThread:
-                proc.wait()
-            f.close()
+			# (useful on slower machines, e.g. raspberryPi 
+			if self.singleThread:
+				proc.wait()
+				
+			f.close()
 			print "rc = %s" % rc
 		except:
 			print "Call to lilypond failed."
 		
 	def OnTimer(self, whatever):
 		self.elapsedTime += self.refreshPeriod
-		if self.elapsedTime < self.duration*1000:
+		if self.elapsedTime < self.duration * 1000:
 			return
 		self.elapsedTime = 0
 		if self.pause:
@@ -490,7 +500,7 @@ lower = \\relative c {
 
 		qmi = wx.MenuItem(fileMenu, wx.ID_EXIT, '&Quit\tCtrl+W')
 		fileMenu.AppendItem(qmi)
- 
+
 		self.Bind(wx.EVT_MENU, self.OnQuit, qmi)
 
 		menubar.Append(fileMenu, '&File')
@@ -537,7 +547,7 @@ lower = \\relative c {
 		self.durationMenuIdRev = {}
 		self.duration = int(self.duration)
 		if self.duration < self.durationMin or self.duration > self.durationMax:
-			self.duration = int(0.5*(self.durationMax - self.durationMin + 1))
+			self.duration = int(0.5 * (self.durationMax - self.durationMin + 1))
 		for duration in range(self.durationMin, self.durationMax + 1):
 			self.durationMenuId[duration] = wx.NewId()
 			self.durationMenuIdRev[self.durationMenuId[duration]] = duration
@@ -548,8 +558,8 @@ lower = \\relative c {
 
 		menubar.Append(durationMenu, '&Duration')
 
-		# Menu: VIEW
-		viewMenu = wx.Menu()
+		# Menu: SETTINGS
+		settingsMenu = wx.Menu()
 		fontSizeMenu = wx.Menu()
 		self.fontSizeMenuId = {}
 		self.fontSizeMenuIdRev = {}
@@ -561,9 +571,16 @@ lower = \\relative c {
 				fontSizeMenu.Check(self.fontSizeMenuId[fontSize], True)
 			self.Bind(wx.EVT_MENU, self.MenuSetFontSize, id=self.fontSizeMenuId[fontSize])
 
-		viewMenu.AppendMenu(wx.ID_ANY, '&Font size', fontSizeMenu)
+		singleThreadId = wx.NewId()
+		settingsMenu.Append(singleThreadId, "Single thread", "", wx.ITEM_CHECK)
+		settingsMenu.Check(singleThreadId, self.singleThread)
+		self.Bind(wx.EVT_MENU, self.MenuSetSingleThread, id=singleThreadId)
 
-		menubar.Append(viewMenu, '&View')
+		settingsMenu.AppendSeparator()
+
+		settingsMenu.AppendMenu(wx.ID_ANY, '&Font size', fontSizeMenu)
+
+		menubar.Append(settingsMenu, '&Settings')
 
 		self.SetMenuBar(menubar)
 
@@ -573,18 +590,18 @@ lower = \\relative c {
 		self.chord = Chord(self)
 		self.panel = wx.Panel(self, -1)
 
-		#self.panel.SetBackgroundColour('#4f5049')
+		# self.panel.SetBackgroundColour('#4f5049')
 		self.panel.SetBackgroundColour('WHITE')
 		self.vbox = wx.BoxSizer(wx.VERTICAL)
 
 		self.upperPanel = wx.Panel(self.panel)
-		#self.upperPanel.SetBackgroundColour('#ededab')
+		# self.upperPanel.SetBackgroundColour('#ededab')
  		self.upperPanel.SetBackgroundColour('WHITE')
  		
 		self.vbox.Add(self.upperPanel, 0, wx.EXPAND | wx.ALL, 20)
  		
 		lowerPanel = wx.Panel(self.panel)
-		#lowerPanel.SetBackgroundColour('#ededed')
+		# lowerPanel.SetBackgroundColour('#ededed')
  		lowerPanel.SetBackgroundColour('WHITE')
  		
 		self.vbox.Add(lowerPanel, 1, wx.EXPAND | wx.ALL, 20)
@@ -609,16 +626,16 @@ lower = \\relative c {
 					
 		self.fontSizeOld = self.fontSize
 		
-		#self.chordDisplay = wx.StaticText(self.panel, -1, self.chord.Print(), (45, 25), style=wx.ALIGN_LEFT)
+		# self.chordDisplay = wx.StaticText(self.panel, -1, self.chord.Print(), (45, 25), style=wx.ALIGN_LEFT)
 		self.chordDisplay = wx.StaticText(self.upperPanel, -1, self.chord.Print(), (30, 25), style=wx.ALIGN_LEFT)
 		self.font = wx.Font(self.fontSize, wx.SWISS, wx.NORMAL, wx.NORMAL)
 		self.chordDisplay.SetFont(self.font)
 
 		if self.displayScore:
-			#imageFile = "chord_C.png"
-			#png = wx.Image(imageFile, wx.BITMAP_TYPE_ANY).ConvertToBitmap()
+			# imageFile = "chord_C.png"
+			# png = wx.Image(imageFile, wx.BITMAP_TYPE_ANY).ConvertToBitmap()
 			png = wx.EmptyImage(5, 5).ConvertToBitmap()
-			#self.chordImage = wx.StaticBitmap(self.panel, -1, png, (0, 100), (png.GetWidth(), png.GetHeight()))
+			# self.chordImage = wx.StaticBitmap(self.panel, -1, png, (0, 100), (png.GetWidth(), png.GetHeight()))
 			self.chordImage = wx.StaticBitmap(lowerPanel, -1, png, (0, 0), (png.GetWidth(), png.GetHeight()))
 
 		TIMER_ID = 100  # pick a number
@@ -635,17 +652,17 @@ lower = \\relative c {
 		self.upperPanel.Bind(wx.EVT_KEY_DOWN, self.OnKeyDown)
 
 	def MenuSetTones(self, evt):
-		#tone = self.tonesMenuIdRev[evt]
-		#self.pitches[tone] = abs(self.pitches[tone] - 1)
+		# tone = self.tonesMenuIdRev[evt]
+		# self.pitches[tone] = abs(self.pitches[tone] - 1)
 		tone = self.tonesMenuIdRev[evt.GetId()]
-		#cb = evt.GetEventObject()
-		#print "Event: "
-		#print cb
-		#print evt.IsChecked()
-		#print evt.GetId()
-		#print tone
+		# cb = evt.GetEventObject()
+		# print "Event: "
+		# print cb
+		# print evt.IsChecked()
+		# print evt.GetId()
+		# print tone
 		self.pitches[tone] = evt.IsChecked()
-		#print "pitches: " + self.pitches
+		# print "pitches: " + self.pitches
 
 	def MenuSetQualities(self, evt):
 		quality = self.qualitiesMenuIdRev[evt.GetId()]
@@ -672,13 +689,16 @@ lower = \\relative c {
 			else:
 				self.fontSizes[fontSizeLoop] = False
 
+	def MenuSetSingleThread(self, evt):
+		self.singleThread = evt.IsChecked()
+		
 	def OnQuit(self, e):
 		self.SaveSettings()
 		self.Close()
 
 	def OnKeyDown(self, e):
 		key = e.GetKeyCode()
-        
+
 		if key == wx.WXK_ESCAPE:
 			self.OnQuit(e)
 		elif key == wx.WXK_SPACE:
@@ -689,7 +709,7 @@ lower = \\relative c {
 				self.chordDisplayLabelOrig = label
 				label += pauseLabel
 			else:
-				#label = re.sub(r"%s" % pauseLabel, r"", label)
+				# label = re.sub(r"%s" % pauseLabel, r"", label)
 				label = self.chordDisplayLabelOrig
 			self.chordDisplay.SetLabel(label)
 
