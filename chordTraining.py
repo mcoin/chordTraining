@@ -118,7 +118,7 @@ class ChordTraining(wx.Frame):
 # 		self.displayScore = False
 		self.displayScore = True
 		# Resolution for the score images
-		self.scoreResolution = 150
+		self.scoreRes = 150
 		
 		# Default window size
 		self.windowSizeX = 500
@@ -141,6 +141,16 @@ class ChordTraining(wx.Frame):
 		self.fontSizes['144'] = False
 		self.fontSizeMin = int(self.fontSizes.keys()[0])
 		self.fontSizeMax = int(self.fontSizes.keys()[-1])
+		
+		# Default resolution for scores
+		self.scoreRes = 150
+		self.scoreRess = collections.OrderedDict()
+		self.scoreRess['100'] = False
+		self.scoreRess['150'] = True
+		self.scoreRess['200'] = False
+		self.scoreRess['300'] = False
+		self.scoreResMin = int(self.scoreRess.keys()[0])
+		self.scoreResMax = int(self.scoreRess.keys()[-1])
 		
 		# Path to file where the settings are saved		
 		home = expanduser("~")
@@ -180,6 +190,8 @@ class ChordTraining(wx.Frame):
 		f.write("\t%d\t%d\n" % (size.x, size.y))
 		f.write("FontSize:\n")
 		f.write("\t%d\n" % self.fontSize)
+		f.write("ScoreResolution:\n")
+		f.write("\t%d\n" % self.scoreRes)
 		f.write("SingleThread:\n")
 		f.write("\t%r\n" % self.singleThread)
 				
@@ -229,6 +241,13 @@ class ChordTraining(wx.Frame):
 								self.fontSizes[fontSize] = True
 							else:
 								self.fontSizes[fontSize] = False
+					elif context == "ScoreResolution":
+						self.scoreRes = int(items[0])
+						for scoreRes in self.scoreRess.keys():
+							if int(scoreRes) == self.scoreRes:
+								self.scoreRess[scoreRes] = True
+							else:
+								self.scoreRess[scoreRes] = False
 					elif context == "SingleThread":
 						if items[0].lower() == 'false':
 							self.singleThread = False
@@ -271,6 +290,22 @@ class ChordTraining(wx.Frame):
 					first = False
 				else:
 					self.fontSizes[fontSize] = False
+
+		# Check that the given score resolution is legal
+		nbScoreRess = 0
+		for scoreRes in self.scoreRess.keys():
+			if self.scoreRess[scoreRes]:
+				nbScoreRess += 1
+		if nbScoreRess != 1:
+			first = True
+			for scoreRes in self.scoreRess.keys():
+				if first:
+					self.scoreRess[scoreRes] = True
+					self.scoreRes = int(scoreRes)
+					first = False
+				else:
+					self.scoreRess[scoreRes] = False
+			
 			
 	def GenerateImage(self, chord):
 		basisHeader = '''
@@ -337,7 +372,7 @@ lower = \\relative c {
 }
 '''
 		if self.modes['Chord']:
-			lyfile = "chord_" + chord.GetLyPitch() + "_" + chord.GetQuality() + "_res" + str(self.scoreResolution) + ".ly"
+			lyfile = "chord_" + chord.GetLyPitch() + "_" + chord.GetQuality() + "_res" + str(self.scoreRes) + ".ly"
 			content = basisHeader + \
 			basisUpperBeginning + \
 			basisUpperContentChord + \
@@ -347,7 +382,7 @@ lower = \\relative c {
 			basisLowerEnd + \
 			basisFooter
 		elif self.modes['II-V-I']:
-			lyfile = "prog_II-V-I_" + chord.GetLyPitch() + "_res" + str(self.scoreResolution) + ".ly"
+			lyfile = "prog_II-V-I_" + chord.GetLyPitch() + "_res" + str(self.scoreRes) + ".ly"
 			content = basisHeader + \
 			basisUpperBeginning + \
 			basisContentII_V_I + \
@@ -357,7 +392,7 @@ lower = \\relative c {
 			basisLowerEnd + \
 			basisFooter
 		elif self.modes['V-I']:
-			lyfile = "prog_V-I_" + chord.GetLyPitch() + "_res" + str(self.scoreResolution) + ".ly"
+			lyfile = "prog_V-I_" + chord.GetLyPitch() + "_res" + str(self.scoreRes) + ".ly"
 			content = basisHeader + \
 			basisUpperBeginning + \
 			basisContentV_I + \
@@ -423,7 +458,7 @@ lower = \\relative c {
 			# The lilypond call apparently won't work properly without an explicit stdout redirection...
 			lilypondOutputFile = os.path.join(self.directory, "lilypond_outputFile")
 			f = open(lilypondOutputFile, "w")			
-			proc = Popen(["lilypond", "--png", "-dresolution=" + str(self.scoreResolution), "-dpreview", lyfile], stdout=f, cwd=self.directory)
+			proc = Popen(["lilypond", "--png", "-dresolution=" + str(self.scoreRes), "-dpreview", lyfile], stdout=f, cwd=self.directory)
 			# Do not continue after starting the lilypond process
 			# (useful on slower machines, e.g. raspberryPi 
 			if self.singleThread:
@@ -445,14 +480,16 @@ lower = \\relative c {
 		self.chordDisplay.SetLabel(self.chord.Print())
 
 		if self.chord.GetPitch() == "-":
+			png = wx.EmptyImage(5, 5).ConvertToBitmap()
+			self.chordImage.SetBitmap(png)
 			return
 		if self.displayScore:
 			if self.modes['Chord']:
-				imageFile = "chord_" + self.chord.GetLyPitch() + "_" + self.chord.GetQuality() + "_res" + str(self.scoreResolution) + ".png"
+				imageFile = "chord_" + self.chord.GetLyPitch() + "_" + self.chord.GetQuality() + "_res" + str(self.scoreRes) + ".png"
 			elif self.modes['II-V-I']:
-				imageFile = "prog_II-V-I_" + self.chord.GetLyPitch() + "_res" + str(self.scoreResolution) + ".png"
+				imageFile = "prog_II-V-I_" + self.chord.GetLyPitch() + "_res" + str(self.scoreRes) + ".png"
 			elif self.modes['V-I']:
-				imageFile = "prog_V-I_" + self.chord.GetLyPitch() + "_res" + str(self.scoreResolution) + ".png"
+				imageFile = "prog_V-I_" + self.chord.GetLyPitch() + "_res" + str(self.scoreRes) + ".png"
 			else:
 				# Unsupported mode
 				raise
@@ -518,29 +555,45 @@ lower = \\relative c {
 		menubar.Append(modeMenu, '&Mode')
 
 		# Menu: TONES
-		tonesMenu = wx.Menu()
+		self.tonesMenu = wx.Menu()
 		self.tonesMenuId = {}
 		self.tonesMenuIdRev = {}
 		for tone in self.pitches.keys():
 			self.tonesMenuId[tone] = wx.NewId()
 			self.tonesMenuIdRev[self.tonesMenuId[tone]] = tone
-			tonesMenu.Append(self.tonesMenuId[tone], tone, "", wx.ITEM_CHECK)
-			tonesMenu.Check(self.tonesMenuId[tone], self.pitches[tone])
+			self.tonesMenu.Append(self.tonesMenuId[tone], tone, "", wx.ITEM_CHECK)
+			self.tonesMenu.Check(self.tonesMenuId[tone], self.pitches[tone])
 			self.Bind(wx.EVT_MENU, self.MenuSetTones, id=self.tonesMenuId[tone])
-		menubar.Append(tonesMenu, '&Tones')
+			
+		self.tonesMenu.AppendSeparator()
+		self.tonesFuncId = {\
+						"all" : wx.NewId(),\
+						"none" : wx.NewId(),\
+						"invert" : wx.NewId()\
+						}
+		self.tonesMenu.Append(self.tonesFuncId["all"], "All")
+		self.Bind(wx.EVT_MENU, self.MenuSetTones, id=self.tonesFuncId["all"])
+		self.tonesMenu.Append(self.tonesFuncId["none"], "None")
+		self.Bind(wx.EVT_MENU, self.MenuSetTones, id=self.tonesFuncId["none"])
+		self.tonesMenu.Append(self.tonesFuncId["invert"], "Invert")
+		self.Bind(wx.EVT_MENU, self.MenuSetTones, id=self.tonesFuncId["invert"])
+					
+		menubar.Append(self.tonesMenu, '&Tones')
 
 		# Menu: QUALITIES
-		qualitiesMenu = wx.Menu()
+		self.qualitiesMenu = wx.Menu()
 		self.qualitiesMenuId = {}
 		self.qualitiesMenuIdRev = {}
 		for quality in self.qualities.keys():
 			self.qualitiesMenuId[quality] = wx.NewId()
 			self.qualitiesMenuIdRev[self.qualitiesMenuId[quality]] = quality
-			qualitiesMenu.Append(self.qualitiesMenuId[quality], quality, "", wx.ITEM_CHECK)
-			qualitiesMenu.Check(self.qualitiesMenuId[quality], self.qualities[quality])
+			self.qualitiesMenu.Append(self.qualitiesMenuId[quality], quality, "", wx.ITEM_CHECK)
+			self.qualitiesMenu.Check(self.qualitiesMenuId[quality], self.qualities[quality])
 			self.Bind(wx.EVT_MENU, self.MenuSetQualities, id=self.qualitiesMenuId[quality])
-		menubar.Append(qualitiesMenu, '&Qualities')
-
+			self.qualitiesMenu.Enable(self.qualitiesMenuId[quality], self.modes['Chord'])
+				
+		menubar.Append(self.qualitiesMenu, '&Qualities')
+			
 		# Menu: DURATION
 		durationMenu = wx.Menu()
 		self.durationMenuId = {}
@@ -571,6 +624,17 @@ lower = \\relative c {
 				fontSizeMenu.Check(self.fontSizeMenuId[fontSize], True)
 			self.Bind(wx.EVT_MENU, self.MenuSetFontSize, id=self.fontSizeMenuId[fontSize])
 
+		scoreResMenu = wx.Menu()
+		self.scoreResMenuId = {}
+		self.scoreResMenuIdRev = {}
+		for scoreRes in self.scoreRess.keys():
+			self.scoreResMenuId[scoreRes] = wx.NewId()
+			self.scoreResMenuIdRev[self.scoreResMenuId[scoreRes]] = scoreRes
+			scoreResMenu.Append(self.scoreResMenuId[scoreRes], "%s" % scoreRes, "", wx.ITEM_RADIO)
+			if int(scoreRes) == self.scoreRes:
+				scoreResMenu.Check(self.scoreResMenuId[scoreRes], True)
+			self.Bind(wx.EVT_MENU, self.MenuSetScoreRes, id=self.scoreResMenuId[scoreRes])
+
 		singleThreadId = wx.NewId()
 		settingsMenu.Append(singleThreadId, "Single thread", "", wx.ITEM_CHECK)
 		settingsMenu.Check(singleThreadId, self.singleThread)
@@ -579,6 +643,7 @@ lower = \\relative c {
 		settingsMenu.AppendSeparator()
 
 		settingsMenu.AppendMenu(wx.ID_ANY, '&Font size', fontSizeMenu)
+		settingsMenu.AppendMenu(wx.ID_ANY, '&Score resolution', scoreResMenu)
 
 		menubar.Append(settingsMenu, '&Settings')
 
@@ -652,17 +717,21 @@ lower = \\relative c {
 		self.upperPanel.Bind(wx.EVT_KEY_DOWN, self.OnKeyDown)
 
 	def MenuSetTones(self, evt):
-		# tone = self.tonesMenuIdRev[evt]
-		# self.pitches[tone] = abs(self.pitches[tone] - 1)
-		tone = self.tonesMenuIdRev[evt.GetId()]
-		# cb = evt.GetEventObject()
-		# print "Event: "
-		# print cb
-		# print evt.IsChecked()
-		# print evt.GetId()
-		# print tone
-		self.pitches[tone] = evt.IsChecked()
-		# print "pitches: " + self.pitches
+		if evt.GetId() == self.tonesFuncId["all"]:
+			for tone in self.pitches.keys():
+				self.pitches[tone] = True
+				self.tonesMenu.Check(self.tonesMenuId[tone], self.pitches[tone])
+		elif evt.GetId() == self.tonesFuncId["none"]:
+			for tone in self.pitches.keys():
+				self.pitches[tone] = False
+				self.tonesMenu.Check(self.tonesMenuId[tone], self.pitches[tone])
+		elif evt.GetId() == self.tonesFuncId["invert"]:
+			for tone in self.pitches.keys():
+				self.pitches[tone] = not self.pitches[tone]
+				self.tonesMenu.Check(self.tonesMenuId[tone], self.pitches[tone])
+		else:
+			tone = self.tonesMenuIdRev[evt.GetId()]
+			self.pitches[tone] = evt.IsChecked()
 
 	def MenuSetQualities(self, evt):
 		quality = self.qualitiesMenuIdRev[evt.GetId()]
@@ -675,6 +744,11 @@ lower = \\relative c {
 				self.modes[modeLoop] = True
 			else:
 				self.modes[modeLoop] = False
+				
+		# Disable items in the qualities menu in case the mode 
+		# is not set to 'Chord'
+		for quality in self.qualities.keys():
+		 	self.qualitiesMenu.Enable(self.qualitiesMenuId[quality], self.modes['Chord'])
 
 	def MenuSetDuration(self, evt):
 		duration = self.durationMenuIdRev[evt.GetId()]
@@ -688,6 +762,15 @@ lower = \\relative c {
 				self.fontSize = int(fontSizeLoop)
 			else:
 				self.fontSizes[fontSizeLoop] = False
+
+	def MenuSetScoreRes(self, evt):
+		scoreRes = self.scoreResMenuIdRev[evt.GetId()]
+		for scoreResLoop in self.scoreRess.keys():
+			if scoreResLoop == scoreRes:
+				self.scoreRess[scoreResLoop] = True
+				self.scoreRes = int(scoreResLoop)
+			else:
+				self.scoreRess[scoreResLoop] = False
 
 	def MenuSetSingleThread(self, evt):
 		self.singleThread = evt.IsChecked()
