@@ -14,6 +14,14 @@ from subprocess import call, Popen
 import os
 from os.path import expanduser
 
+try:
+    from agw import pygauge as PG
+except ImportError: # if it's not there locally, try the wxPython lib.
+    try:
+        import wx.lib.agw.pygauge as PG
+    except:
+        raise Exception("Requires wxPython version greater than 2.9.0.0 (for PyGauge)")
+
 def pitch2LyPitch(pitch):
 	lyPitch = pitch
 	lyPitch = re.sub(r"(.)b", r"\1f", lyPitch)
@@ -25,6 +33,11 @@ def lyPitch2Pitch(lyPitch):
 	pitch = re.sub(r"(.)f", r"\1b", pitch)
 	pitch = re.sub(r"(.)s", r"\1#", pitch)
 	return pitch
+
+# Exception thrown when no image may be determined for the score of a chord/progression
+class NoImage(Exception):
+	def __init__(self):
+	    pass
 
 class Chord:
 	def __init__(self, chordTraining):
@@ -112,11 +125,14 @@ class ChordTraining(wx.Frame):
 		self.durationMin = 1  # s
 		self.durationMax = 10  # s
 		self.elapsedTime = 0  # ms
-		self.refreshPeriod = 500  # ms
+		self.refreshPeriod = 50  # ms
 
 		# Do not display chord/scale score
 # 		self.displayScore = False
 		self.displayScore = True
+		# Default image in case no proper chord is selected or when the score 
+		# is inactive
+		self.defaultImage = wx.EmptyImage(5, 5).ConvertToBitmap()
 		# Resolution for the score images
 		self.scoreRes = 150
 		
@@ -194,7 +210,9 @@ class ChordTraining(wx.Frame):
 		f.write("\t%d\n" % self.scoreRes)
 		f.write("SingleThread:\n")
 		f.write("\t%r\n" % self.singleThread)
-				
+		f.write("DisplayScore:\n")
+		f.write("\t%s\n" % self.displayScore)
+						
 		f.close()
 
 
@@ -215,11 +233,17 @@ class ChordTraining(wx.Frame):
 					
 					if context == "Tones":
 						tone = items[0]
-						state = items[1] == 'True' or items[1] == 'true' or items[1] == 'TRUE'
+						try:
+							state = items[1].lower() == 'true'
+						except:
+							state = False
 						self.pitches[tone] = state
 					elif context == "Qualities":
 						quality = items[0]
-						state = items[1] == 'True' or items[1] == 'true' or items[1] == 'TRUE'
+						try:
+							state = items[1].lower() == 'true'
+						except:
+							state = False
 						self.qualities[quality] = state		      
 					elif context == "Mode":
 						mode = items[0]
@@ -253,7 +277,11 @@ class ChordTraining(wx.Frame):
 							self.singleThread = False
 						else:
 							self.singleThread = True
-						
+					elif context == "DisplayScore":
+						if items[0].lower() == 'false':
+							self.displayScore = False
+						else:
+							self.displayScore = True						
 		except:
 			pass
 
@@ -470,21 +498,31 @@ lower = \\relative c {
 			print "Call to lilypond failed."
 		
 	def OnTimer(self, whatever):
-		self.elapsedTime += self.refreshPeriod
-		if self.elapsedTime < self.duration * 1000:
-			return
-		self.elapsedTime = 0
 		if self.pause:
 			return
+		self.elapsedTime += self.refreshPeriod
+
+		# Update time gauge
+		value = self.elapsedTime/self.duration/1000.*100.
+		self.timeGauge.SetValue(min(value, self.timeGaugeMax))
+		
+		if self.elapsedTime <= self.duration * 1000:
+			return
+		self.elapsedTime = 0
+
 		self.GenerateChord()
 		self.chordDisplay.SetLabel(self.chord.Print())
-
-		if self.chord.GetPitch() == "-":
-			png = wx.EmptyImage(5, 5).ConvertToBitmap()
-			self.chordImage.SetBitmap(png)
-			return
-		if self.displayScore:
-			if self.modes['Chord']:
+			
+		# Reset gauge
+# 		self.timeGauge.SetValue(0)
+		
+		try:
+			# Set the image for the score
+			if not self.displayScore:
+				raise NoImage
+			elif self.chord.GetPitch() == "-":
+				raise NoImage
+			elif self.modes['Chord']:
 				imageFile = "chord_" + self.chord.GetLyPitch() + "_" + self.chord.GetQuality() + "_res" + str(self.scoreRes) + ".png"
 			elif self.modes['II-V-I']:
 				imageFile = "prog_II-V-I_" + self.chord.GetLyPitch() + "_res" + str(self.scoreRes) + ".png"
@@ -498,9 +536,17 @@ lower = \\relative c {
 				with open(imageFile): pass
 				png = wx.Image(imageFile, wx.BITMAP_TYPE_ANY).ConvertToBitmap()
 			except IOError:
-				png = wx.EmptyImage(5, 5).ConvertToBitmap()
+				raise NoImage
+
+		except NoImage:
+			png = self.defaultImage
+			# Only attempt to generate the score if: 
+			# - there is a proper chord
+			# - the score is enabled
+			if self.chord.GetPitch() != "-" and self.displayScore:
 				self.GenerateImage(self.chord)
-			self.chordImage.SetBitmap(png)
+			
+		self.chordImage.SetBitmap(png)
 			
 		# Update the font size in case it has been modified
 		if self.fontSize != self.fontSizeOld:
@@ -526,14 +572,6 @@ lower = \\relative c {
 
 # 		fileMenu.Append(wx.ID_EXIT, '&Quit')
 # 		self.Bind(wx.EVT_MENU, self.OnQuit, id=wx.ID_EXIT)
-
-# 		fileMenu.AppendSeparator()
-# 		imp = wx.Menu()
-# 		imp.Append(wx.ID_ANY, 'Import newsfeed list...')
-# 		imp.Append(wx.ID_ANY, 'Import bookmarks...')
-# 		imp.Append(wx.ID_ANY, 'Import mail...')
-# 
-# 		fileMenu.AppendMenu(wx.ID_ANY, 'I&mport', imp)
 
 		qmi = wx.MenuItem(fileMenu, wx.ID_EXIT, '&Quit\tCtrl+W')
 		fileMenu.AppendItem(qmi)
@@ -636,14 +674,30 @@ lower = \\relative c {
 			self.Bind(wx.EVT_MENU, self.MenuSetScoreRes, id=self.scoreResMenuId[scoreRes])
 
 		singleThreadId = wx.NewId()
-		settingsMenu.Append(singleThreadId, "Single thread", "", wx.ITEM_CHECK)
+		settingsMenu.Append(singleThreadId, "Single &thread", "", wx.ITEM_CHECK)
 		settingsMenu.Check(singleThreadId, self.singleThread)
 		self.Bind(wx.EVT_MENU, self.MenuSetSingleThread, id=singleThreadId)
+
+		displayScoreId = wx.NewId()
+		settingsMenu.Append(displayScoreId, "&Display score", "", wx.ITEM_CHECK)
+		settingsMenu.Check(displayScoreId, self.displayScore)
+		self.Bind(wx.EVT_MENU, self.MenuSetDisplayScore, id=displayScoreId)
 
 		settingsMenu.AppendSeparator()
 
 		settingsMenu.AppendMenu(wx.ID_ANY, '&Font size', fontSizeMenu)
 		settingsMenu.AppendMenu(wx.ID_ANY, '&Score resolution', scoreResMenu)
+
+		lilypondPathMenu = wx.Menu()
+		lilypondPathId = wx.NewId()
+		pathToLilypond = "test"
+		lilypondPathMenu.Append(lilypondPathId, "%s" % pathToLilypond)
+		lilypondPathMenu.Enable(lilypondPathId, False)
+		lilypondPathMenu.AppendSeparator()
+		editLilypondPathId = wx.NewId()
+		lilypondPathMenu.Append(editLilypondPathId, "Edit...")
+
+		settingsMenu.AppendMenu(wx.ID_ANY, '&Path to Lilypond', lilypondPathMenu)
 
 		menubar.Append(settingsMenu, '&Settings')
 
@@ -653,24 +707,48 @@ lower = \\relative c {
 		self.SetTitle('Chord training')
 
 		self.chord = Chord(self)
-		self.panel = wx.Panel(self, -1)
+		
+		# LAYOUT & BACKGROUND COLOURS
+		self.SetBackgroundColour('WHITE') # Background colour of the main window
 
-		# self.panel.SetBackgroundColour('#4f5049')
-		self.panel.SetBackgroundColour('WHITE')
+		# Base panel
+		self.panel = wx.Panel(self, -1)
+		self.panel.SetBackgroundColour('WHITE') # Background colour of the base panel
+
+		# Vertical box with
+		# - Chord name on top
+		# - Corresponding score below
 		self.vbox = wx.BoxSizer(wx.VERTICAL)
 
 		self.upperPanel = wx.Panel(self.panel)
-		# self.upperPanel.SetBackgroundColour('#ededab')
- 		self.upperPanel.SetBackgroundColour('WHITE')
- 		
+ 		self.upperPanel.SetBackgroundColour('WHITE')	
 		self.vbox.Add(self.upperPanel, 0, wx.EXPAND | wx.ALL, 20)
  		
-		lowerPanel = wx.Panel(self.panel)
-		# lowerPanel.SetBackgroundColour('#ededed')
- 		lowerPanel.SetBackgroundColour('WHITE')
  		
+ 		
+		# Test gauge
+		self.timeGaugeMax = 100
+# 		self.timeGauge = wx.Gauge(self, -1, wx.NewId(), (110, 150), (250, 25), style=wx.HORIZONTAL)
+#  		self.timeGauge = wx.Gauge(self, -1, wx.NewId(), wx.DefaultPosition, wx.DefaultSize, wx.GA_VERTICAL)
+#  		self.timeGauge = wx.Gauge(self.panel, id=wx.NewId(), range=self.timeGaugeMax, pos=(50,150), size=(200,20), style=wx.GA_VERTICAL)
+ 		self.timeGauge = wx.Gauge(self.panel, id=wx.NewId(), range=self.timeGaugeMax, size=(200,20), style=wx.GA_VERTICAL)
+ 		self.timeGauge.SetRange(self.timeGaugeMax)
+ 		test = self.timeGauge.IsVertical()
+ 		
+ 		hboxGauge = wx.BoxSizer(wx.HORIZONTAL)
+  		hboxGauge.Add((50,0))
+  		hboxGauge.Add(self.timeGauge, flag=wx.ALIGN_CENTER)
+  		
+  		self.vbox.Add(hboxGauge, flag=wx.ALIGN_LEFT)
+  		
+ 		
+ 		
+		lowerPanel = wx.Panel(self.panel)		
+ 		lowerPanel.SetBackgroundColour('WHITE')		
 		self.vbox.Add(lowerPanel, 1, wx.EXPAND | wx.ALL, 20)
+		
 		self.panel.SetSizer(self.vbox)
+		
 		
 		self.fontSize = 0
 		for fontSize in self.fontSizes.keys():
@@ -696,17 +774,29 @@ lower = \\relative c {
 		self.font = wx.Font(self.fontSize, wx.SWISS, wx.NORMAL, wx.NORMAL)
 		self.chordDisplay.SetFont(self.font)
 
-		if self.displayScore:
-			# imageFile = "chord_C.png"
-			# png = wx.Image(imageFile, wx.BITMAP_TYPE_ANY).ConvertToBitmap()
-			png = wx.EmptyImage(5, 5).ConvertToBitmap()
-			# self.chordImage = wx.StaticBitmap(self.panel, -1, png, (0, 100), (png.GetWidth(), png.GetHeight()))
-			self.chordImage = wx.StaticBitmap(lowerPanel, -1, png, (0, 0), (png.GetWidth(), png.GetHeight()))
+  		
+# 		print "test: %d" % test
+		
+# 		self.timeGauge = PG.PyGauge(lowerPanel, -1, size=(100,25),style=wx.GA_VERTICAL)
+# 		self.timeGauge.SetRange(self.timeGaugeMax)
+# 		self.timeGauge.SetValue(80)
+#  		
+# 		self.timeGauge.SetBackgroundColour(wx.WHITE)
+# 		self.timeGauge.SetBorderColor(wx.BLACK)
+ 		
+# 		self.vbox.Add(self.timeGauge, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 20)
+		
+# 		if self.displayScore:
+		# imageFile = "chord_C.png"
+		# png = wx.Image(imageFile, wx.BITMAP_TYPE_ANY).ConvertToBitmap()
+		png = self.defaultImage
+		# self.chordImage = wx.StaticBitmap(self.panel, -1, png, (0, 100), (png.GetWidth(), png.GetHeight()))
+		self.chordImage = wx.StaticBitmap(lowerPanel, -1, png, (0, 0), (png.GetWidth(), png.GetHeight()))
 
-		TIMER_ID = 100  # pick a number
-		self.timer = wx.Timer(self.panel, TIMER_ID)  # message will be sent to the self.panel
+		timerId = wx.NewId()
+		self.timer = wx.Timer(self.panel, timerId)  # message will be sent to the self.panel
 		self.timer.Start(self.refreshPeriod)  # milliseconds
-		wx.EVT_TIMER(self.panel, TIMER_ID, self.OnTimer)  # call the OnTimer function
+		wx.EVT_TIMER(self.panel, timerId, self.OnTimer)  # call the OnTimer function
 
 		# Set pause to off
 		self.pause = False
@@ -774,6 +864,10 @@ lower = \\relative c {
 
 	def MenuSetSingleThread(self, evt):
 		self.singleThread = evt.IsChecked()
+		
+	def MenuSetDisplayScore(self, evt):
+		self.displayScore = evt.IsChecked()
+	
 		
 	def OnQuit(self, e):
 		self.SaveSettings()
