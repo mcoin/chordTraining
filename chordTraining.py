@@ -504,6 +504,9 @@ lower = \\relative c {
 				content = re.sub(r"chordForm1", r"ef g bf d", content)
 				content = re.sub(r"chordForm2", r"bf d ef g", content)
 				content = re.sub(r"\\key c \\major", r"\\key bf \\major", content)
+			elif chord.GetQuality() == "dim7":
+				content = re.sub(r"chordForm1", r"c ef gf a", content)
+				content = re.sub(r"chordForm2", r"c ef gf b", content)
 			else:
 				# TODO: Other qualities not yet implemented...
 				content = re.sub(r"chordForm1", r"c e g", content)
