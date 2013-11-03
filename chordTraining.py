@@ -14,13 +14,6 @@ from subprocess import call, Popen
 import os
 from os.path import expanduser
 
-try:
-    from agw import pygauge as PG
-except ImportError: # if it's not there locally, try the wxPython lib.
-    try:
-        import wx.lib.agw.pygauge as PG
-    except:
-        raise Exception("Requires wxPython version greater than 2.9.0.0 (for PyGauge)")
 
 def pitch2LyPitch(pitch):
 	lyPitch = pitch
@@ -34,6 +27,52 @@ def lyPitch2Pitch(lyPitch):
 	pitch = re.sub(r"(.)s", r"\1#", pitch)
 	return pitch
 
+class StayOn:
+	def __init__(self):
+		# Use the PyMouse framework to move the mouse periodically
+		try:
+			from pymouse import PyMouse
+			self.pyMouseEnabled = True
+		except:
+			# Give up in case the PyMouse framework cannot be found
+			self.pyMouseEnabled = False
+			return
+
+		# Total time elapsed since the mouse was last moved to avoid letting the screensavec start
+		self.mouseElapsedTime = 0
+	
+		# Time period after which the mouse should be moved in order to prevent the screensaver from starting (s)
+		self.mouseRefreshPeriod = 30
+		
+		# Mouse object to prevent the screensaver from starting
+		self.mouse = PyMouse()
+		
+		# Mouse displacement
+		self.mouseDx = (0,1)
+		
+		# Movement amplitude
+		self.amplitude = 1
+		
+	def isEnabled(self):
+		return self.pyMouseEnabled
+	
+	def moveMouse(self, elapsedTime):
+		# elapsedTime: Time elapsed since last call (in s)
+		if self.pyMouseEnabled:
+			self.mouseElapsedTime += elapsedTime
+			if self.mouseElapsedTime >= self.mouseRefreshPeriod:
+				self.mouseElapsedTime = 0
+				position = self.mouse.position()
+				self.mouse.move(position[0] + self.mouseDx[0]*self.amplitude, position[1] + self.mouseDx[1]*self.amplitude)
+				if self.mouseDx == (0,1):
+					self.mouseDx = (1,0)
+				elif self.mouseDx == (1,0):
+					self.mouseDx = (0,-1)
+				elif self.mouseDx == (0,-1):
+					self.mouseDx = (-1,0)
+				elif self.mouseDx == (-1,0):
+					self.mouseDx = (0,1)
+		
 # Exception thrown when no image may be determined for the score of a chord/progression
 class NoImage(Exception):
 	def __init__(self):
@@ -176,9 +215,19 @@ class ChordTraining(wx.Frame):
 			os.makedirs(self.directory)
 		self.savefile = os.path.join(self.directory, "settings")	
 
+		# Trick the system to disable screen savers during training
+		self.moveMouse = True
+		
+		# Prevent the screensaver from starting
+		self.stayOn = StayOn()
+		
 		# Attempt to read other settings from the savefile, in case it exists
 		self.LoadSettings()
 		
+		# Override setting in case the feature is unavailable
+		if not self.stayOn.isEnabled():
+			self.moveMouse = False
+			
 		self.InitUI()
 
 		self.Centre()
@@ -212,7 +261,9 @@ class ChordTraining(wx.Frame):
 		f.write("\t%r\n" % self.singleThread)
 		f.write("DisplayScore:\n")
 		f.write("\t%s\n" % self.displayScore)
-						
+		f.write("StayOn:\n")
+		f.write("\t%s\n" % self.moveMouse)
+								
 		f.close()
 
 
@@ -281,7 +332,12 @@ class ChordTraining(wx.Frame):
 						if items[0].lower() == 'false':
 							self.displayScore = False
 						else:
-							self.displayScore = True						
+							self.displayScore = True
+					elif context == "StayOn":
+						if items[0].lower() == 'false':
+							self.moveMouse = False
+						else:
+							self.moveMouse = True								
 		except:
 			pass
 
@@ -502,6 +558,10 @@ lower = \\relative c {
 			return
 		self.elapsedTime += self.refreshPeriod
 
+		# Move the mouse by one pixel so as to avoid the screensaver
+		if self.moveMouse:
+			self.stayOn.moveMouse(self.refreshPeriod/1000.)
+
 		# Update time gauge
 		value = self.elapsedTime/self.duration/1000.*100.
 		self.timeGauge.SetValue(min(value, self.timeGaugeMax))
@@ -512,10 +572,7 @@ lower = \\relative c {
 
 		self.GenerateChord()
 		self.chordDisplay.SetLabel(self.chord.Print())
-			
-		# Reset gauge
-# 		self.timeGauge.SetValue(0)
-		
+							
 		try:
 			# Set the image for the score
 			if not self.displayScore:
@@ -683,6 +740,12 @@ lower = \\relative c {
 		settingsMenu.Check(displayScoreId, self.displayScore)
 		self.Bind(wx.EVT_MENU, self.MenuSetDisplayScore, id=displayScoreId)
 
+		stayOnId = wx.NewId()
+		settingsMenu.Append(stayOnId, "Disable &Screensaver", "", wx.ITEM_CHECK)
+		settingsMenu.Check(stayOnId, self.moveMouse)
+		self.Bind(wx.EVT_MENU, self.MenuSetStayOn, id=stayOnId)
+		settingsMenu.Enable(stayOnId, self.stayOn.isEnabled())
+
 		settingsMenu.AppendSeparator()
 
 		settingsMenu.AppendMenu(wx.ID_ANY, '&Font size', fontSizeMenu)
@@ -775,17 +838,6 @@ lower = \\relative c {
 		self.chordDisplay.SetFont(self.font)
 
   		
-# 		print "test: %d" % test
-		
-# 		self.timeGauge = PG.PyGauge(lowerPanel, -1, size=(100,25),style=wx.GA_VERTICAL)
-# 		self.timeGauge.SetRange(self.timeGaugeMax)
-# 		self.timeGauge.SetValue(80)
-#  		
-# 		self.timeGauge.SetBackgroundColour(wx.WHITE)
-# 		self.timeGauge.SetBorderColor(wx.BLACK)
- 		
-# 		self.vbox.Add(self.timeGauge, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 20)
-		
 # 		if self.displayScore:
 		# imageFile = "chord_C.png"
 		# png = wx.Image(imageFile, wx.BITMAP_TYPE_ANY).ConvertToBitmap()
@@ -868,7 +920,9 @@ lower = \\relative c {
 	def MenuSetDisplayScore(self, evt):
 		self.displayScore = evt.IsChecked()
 	
-		
+	def MenuSetStayOn(self, evt):
+		self.moveMouse = evt.IsChecked()
+			
 	def OnQuit(self, e):
 		self.SaveSettings()
 		self.Close()
