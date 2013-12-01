@@ -15,17 +15,17 @@ import os
 from os.path import expanduser
 
 
-def pitch2LyPitch(pitch):
-	lyPitch = pitch
-	lyPitch = re.sub(r"(.)b", r"\1f", lyPitch)
-	lyPitch = re.sub(r"(.)#", r"\1s", lyPitch)
-	return lyPitch
+# def pitch2LyPitch(pitch):
+# 	lyPitch = pitch
+# 	lyPitch = re.sub(r"(.)b", r"\1f", lyPitch)
+# 	lyPitch = re.sub(r"(.)#", r"\1s", lyPitch)
+# 	return lyPitch
 
-def lyPitch2Pitch(lyPitch):
-	pitch = lyPitch
-	pitch = re.sub(r"(.)f", r"\1b", pitch)
-	pitch = re.sub(r"(.)s", r"\1#", pitch)
-	return pitch
+# def lyPitch2Pitch(lyPitch):
+# 	pitch = lyPitch
+# 	pitch = re.sub(r"(.)f", r"\1b", pitch)
+# 	pitch = re.sub(r"(.)s", r"\1#", pitch)
+# 	return pitch
 
 class StayOn:
 	def __init__(self):
@@ -78,51 +78,287 @@ class NoImage(Exception):
 	def __init__(self):
 	    pass
 
+# class ChordOld:
+# 	def __init__(self, chordTraining):
+# 		self.pitch = "-"
+# 		self.quality = "-"
+# 		self.chordTraining = chordTraining
+# 	
+# 	def SetPitch(self, pitch):
+# 		self.pitch = pitch
+# 
+# 	def SetQuality(self, quality):
+# 		self.quality = quality
+# 	
+# 	def GetPitch(self):
+# 		return self.pitch
+# 	
+# 	def GetLyPitch(self):
+# 		return pitch2LyPitch(self.pitch)
+# 
+# 	def GetQuality(self):
+# 		return self.quality
+# 	
+# 	def Print(self):
+# 		if self.chordTraining.modes['Chord']:
+# 			return self.pitch + " " + self.quality
+# 		elif self.chordTraining.modes['II-V-I'] or self.chordTraining.modes['V-I']:
+# 			try:
+# 				indexPitch = self.chordTraining.pitches.keys().index(self.pitch)
+# 			except:
+# 				return '- -'
+# 			progression = ''
+# 			
+# 			if self.chordTraining.modes['II-V-I']:
+# 				indexIIpitch = indexPitch - 2
+# 				IIpitch = self.chordTraining.pitches.keys()[indexIIpitch]
+# 				progression += IIpitch + ' min7' + '\n'
+# 			
+# 			indexVpitch = indexPitch - 1
+# 			Vpitch = self.chordTraining.pitches.keys()[indexVpitch]	
+# 			progression += Vpitch + ' 7' + '\n'
+# 			
+# 			progression += self.pitch + ' Maj7'
+# 			return progression
+# 		else:
+# 			return "<Unknown mode>"
+# 		
+
 class Chord:
-	def __init__(self, chordTraining):
-		self.pitch = "-"
-		self.quality = "-"
-		self.chordTraining = chordTraining
+	def __init__(self, pitch = '-', quality = '-', mode = '-'):
+		self.pitch = pitch
+		self.quality = quality
+		self.mode = mode
+		
+		self.pitches = ['C', 'F', 'Bb', 'Eb', 'Ab', 'Db', 'F#', 'B', 'E', 'A', 'D', 'G']
 	
+		self.name = None
+		self.fileName = None
+		self.scalePitch = None
+		self.scaleKind = None
+		self.scaleFileName = None
+		self.updateScale = True
+		
 	def SetPitch(self, pitch):
 		self.pitch = pitch
+		self.updateScale = True
 
 	def SetQuality(self, quality):
 		self.quality = quality
+		self.updateScale = True
+	
+	def SetMode(self, mode):
+		self.mode = mode
+		self.updateScale = True
 	
 	def GetPitch(self):
 		return self.pitch
 	
+	def ConvertToLy(self, pitch):
+		lyPitch = pitch
+		lyPitch = re.sub(r"(.)b", r"\1f", lyPitch)
+		lyPitch = re.sub(r"(.)#", r"\1s", lyPitch)
+		return lyPitch
+	
 	def GetLyPitch(self):
-		return pitch2LyPitch(self.pitch)
+		return self.ConvertToLy(self.pitch)
+
+	def GetScalePitch(self):
+		self.DetermineScale()
+		return self.scalePitch
+	
+	def GetLyScalePitch(self):
+		self.DetermineScale()
+		return self.ConvertToLy(self.scalePitch)
+
+	def GetScaleKind(self):
+		self.DetermineScale()
+		return self.scaleKind
 
 	def GetQuality(self):
 		return self.quality
 	
-	def Print(self):
-		if self.chordTraining.modes['Chord']:
-			return self.pitch + " " + self.quality
-		elif self.chordTraining.modes['II-V-I'] or self.chordTraining.modes['V-I']:
+	def GetMode(self):
+		return self.mode
+	
+	def GenerateRandom(self, listPitches, listQualities, currentMode):
+		self.SetMode(currentMode)
+		
+		if len(listPitches) == 0 or len(listQualities) == 0:
+			self.SetPitch("-")
+			self.SetQuality("-")
+			return
+
+# 		chordOld = self.Print()
+# 		while (self.Print() == chordOld):
+		pitch = random.choice(listPitches)
+		self.SetPitch(pitch)
+		
+		quality = random.choice(listQualities)
+		self.SetQuality(quality)
+
+		self.updateScale = True
+
+	def GetName(self):
+		if self.mode == 'Chord':
+			self.name = self.pitch + " " + self.quality
+		elif self.mode == 'II-V-I' or self.mode == 'V-I':
 			try:
-				indexPitch = self.chordTraining.pitches.keys().index(self.pitch)
+				indexPitch = self.pitches.index(self.pitch)
 			except:
 				return '- -'
 			progression = ''
 			
-			if self.chordTraining.modes['II-V-I']:
+			if self.mode == 'II-V-I':
 				indexIIpitch = indexPitch - 2
-				IIpitch = self.chordTraining.pitches.keys()[indexIIpitch]
+				IIpitch = self.pitches[indexIIpitch]
 				progression += IIpitch + ' min7' + '\n'
 			
 			indexVpitch = indexPitch - 1
-			Vpitch = self.chordTraining.pitches.keys()[indexVpitch]	
+			Vpitch = self.pitches[indexVpitch]	
 			progression += Vpitch + ' 7' + '\n'
 			
 			progression += self.pitch + ' Maj7'
-			return progression
+			self.name = progression
 		else:
-			return "<Unknown mode>"
+			self.name = "<Unknown mode>"
+			
+		return self.name
+
+	def DetermineScale(self):
+		if not self.updateScale:
+			return
+		self.updateScale = False
 		
+		if self.mode == 'Chord':
+			if self.quality == 'Maj7':
+				self.scalePitch = self.pitch
+				self.scaleKind = "Major"
+			elif self.quality == '7':
+				indexVpitch = self.pitches.index(self.pitch)
+				indexPitch = indexVpitch + 1
+				if indexPitch >= len(self.pitches): 
+					indexPitch -= len(self.pitches)
+				self.scalePitch = self.pitches[indexPitch]
+				self.scaleKind = "Major"
+			elif self.quality == 'min7':
+				indexIIpitch = self.pitches.index(self.pitch)
+				indexPitch = indexIIpitch + 2
+				if indexPitch >= len(self.pitches): 
+					indexPitch -= len(self.pitches)
+				self.scalePitch = self.pitches[indexPitch]
+				self.scaleKind = "Major"
+			self.scale = self.scalePitch + " Major"
+		elif self.mode == 'II-V-I' or self.mode == 'V-I':
+			self.scalePitch = self.pitch
+			self.scaleKind = "Major"
+			self.scale = self.scalePitch + " Major"
+		else:
+			self.scale = "<Unknown mode>"
+
+	def GetScale(self):
+		self.DetermineScale()			
+		return self.scalePitch + " " + self.scaleKind
+
+	def GetBaseFileName(self):
+		if self.mode == 'Chord':
+			self.fileName = "chord_" + self.GetLyPitch() + "_" + self.GetQuality() + "_res%s%s"
+		elif self.mode == 'II-V-I':
+			self.fileName = "prog_II-V-I_" + self.GetLyPitch() + "_res%s%s"
+		elif self.mode == 'V-I':
+			self.fileName = "prog_V-I_" + self.GetLyPitch() + "_res%s%s"
+		else:
+			raise
+		
+		return self.fileName
+
+	def GetImgName(self, res):
+		return self.GetBaseFileName() % (str(res), '.preview.png')
+	
+	def GetLyName(self, res):
+		return self.GetBaseFileName() % (str(res), '.ly')
+
+	def GetBaseScaleFileName(self):
+		self.DetermineScale()
+		self.scaleFileName = "scale_" + self.GetLyScalePitch() + "_" + self.GetScaleKind() + "_res%s%s"
+		
+		return self.scaleFileName
+
+	def GetScaleImgName(self, res):
+		return self.GetBaseScaleFileName() % (str(res), '.preview.png')
+	
+	def GetLyScaleName(self, res):
+		self.DetermineScale()
+		return self.GetBaseScaleFileName() % (str(res), '.ly')
+
+
+class ChordStack():
+	def __init__(self):
+		# Number of previous and next items in the stack
+		self.nbFurtherItems = 10
+		# Total number of elements
+		self.nbElements = self.nbFurtherItems + 1 + self.nbFurtherItems
+		# Index of the current item
+		self.curr = 0 + self.nbFurtherItems
+		# Index of the previous item
+		self.prev = self.curr - 1
+		# Index of the next item
+		self.next = self.curr + 1
+		# List of Chord objects
+		self.elements = []
+		# Dummy Chord object to return when at end of stack
+		self.dummy = Chord()
+		
+	def AddElement(self, listPitches, listQualities, currentMode):
+		""" Add an item to the stack """
+		self.elements.append(Chord())
+		# TODO: Prevent repetitions
+		self.elements[-1].GenerateRandom(listPitches, listQualities, currentMode)
+		
+	def Initialize(self, listPitches, listQualities, currentMode):
+		""" Allocate items according to the current definitions """
+		for i in range(0, self.nbElements):
+# 			self.elements.append(Chord().GenerateRandom(listPitches, listQualities, currentMode))
+			# TODO: Prevent repetitions
+			self.AddElement(listPitches, listQualities, currentMode)
+		
+	def Next(self):
+		""" Shift indices to display the next item """
+		if self.curr < self.nbElements - 1:
+			self.curr += 1
+		
+	def Prev(self):
+		""" Shift indices to display the previous item """
+		if self.curr > 0:
+			self.curr -= 1
+			
+	def updateStack(self, listPitches, listQualities, currentMode):
+		""" Remove old elements and append new ones """
+		self.elements.pop(0)
+		# TODO: Prevent repetitions
+		self.AddElement(listPitches, listQualities, currentMode)
+		
+	def RecreateNext(self):
+		""" Redefine elements up the list in case of a change in properties """
+
+	def GetCurrent(self):
+		""" Return the current chord object """
+		return self.elements[self.curr]
+	
+	def GetPrev(self):
+		""" Return the previous chord object """
+		if self.curr > 0:
+			return self.elements[self.curr - 1]
+		else:
+			return self.dummy
+		
+	def GetNext(self):
+		""" Return the next chord object """
+		if self.curr < self.nbElements - 1:
+			return self.elements[self.curr + 1]
+		else:
+			return self.dummy
+				
 class ChordTraining(wx.Frame):
 
 	def __init__(self, *args, **kwargs):
@@ -169,11 +405,15 @@ class ChordTraining(wx.Frame):
 		# Do not display chord/scale score
 # 		self.displayScore = False
 		self.displayScore = True
+		self.displayScale = True
 		# Default image in case no proper chord is selected or when the score 
 		# is inactive
 		self.defaultImage = wx.EmptyImage(5, 5).ConvertToBitmap()
 		# Resolution for the score images
 		self.scoreRes = 150
+		
+		self.hSpacerLength = 50
+		self.vSpacerLength = 25
 		
 		# Default window size
 		self.windowSizeX = 500
@@ -221,15 +461,34 @@ class ChordTraining(wx.Frame):
 		# Prevent the screensaver from starting
 		self.stayOn = StayOn()
 		
+		# Set pause to off
+		self.pause = False  
+		
 		# Attempt to read other settings from the savefile, in case it exists
 		self.LoadSettings()
 		
 		# Override setting in case the feature is unavailable
 		if not self.stayOn.isEnabled():
 			self.moveMouse = False
-			
+		
+		self.SetChord()
+		
+		# Set up the menus
+		self.InitMenus()
+		
+		# Set up the layout
 		self.InitUI()
+		
+		# Set up the timer to refresh the display
+		self.SetTimer()
 
+		# Define keyboard shortcuts
+		self.KeyBindings()
+
+		# Set elapsed time so that the layout is refreshed immediately at the start of the program
+		self.elapsedTime = self.duration * 1000
+		self.changedLayout = True
+		
 		self.Centre()
 		self.Show(True)
 		
@@ -261,6 +520,8 @@ class ChordTraining(wx.Frame):
 		f.write("\t%r\n" % self.singleThread)
 		f.write("DisplayScore:\n")
 		f.write("\t%s\n" % self.displayScore)
+		f.write("DisplayScale:\n")
+		f.write("\t%s\n" % self.displayScale)
 		f.write("StayOn:\n")
 		f.write("\t%s\n" % self.moveMouse)
 								
@@ -333,6 +594,11 @@ class ChordTraining(wx.Frame):
 							self.displayScore = False
 						else:
 							self.displayScore = True
+					elif context == "DisplayScale":
+						if items[0].lower() == 'false':
+							self.displayScale = False
+						else:
+							self.displayScale = True
 					elif context == "StayOn":
 						if items[0].lower() == 'false':
 							self.moveMouse = False
@@ -390,7 +656,45 @@ class ChordTraining(wx.Frame):
 				else:
 					self.scoreRess[scoreRes] = False
 			
-			
+	def PrepareImage(self, currChord, imageMode):
+		try:
+			# Set the image for the score
+			if imageMode == "Chord" and not self.displayScore:
+				raise NoImage
+			elif imageMode == "Scale" and not self.displayScale:
+				raise NoImage
+			else:
+				try:
+					if imageMode == "Chord":
+						imageFile = currChord.GetImgName(self.scoreRes)
+					elif imageMode == "Scale":
+						imageFile = currChord.GetScaleImgName(self.scoreRes)
+					else:
+						raise
+				except:
+					raise NoImage
+			imageFile = os.path.join(self.directory, imageFile)
+			try:
+				with open(imageFile): pass
+				png = wx.Image(imageFile, wx.BITMAP_TYPE_ANY).ConvertToBitmap()
+			except IOError:
+				raise NoImage
+
+		except NoImage:
+			png = self.defaultImage
+			# Only attempt to generate the score if: 
+			# - there is a proper chord
+			# - the score is enabled
+			if imageMode == "Chord" and currChord.GetPitch() != "-" and self.displayScore:
+				self.GenerateImage(currChord)
+			elif imageMode == "Scale" and currChord.GetPitch() != "-" and self.displayScale:
+				self.GenerateScaleImage(currChord)
+				
+		if imageMode == "Chord":		
+			self.chordImage.SetBitmap(png)
+		elif imageMode == "Scale":		
+			self.scaleImage.SetBitmap(png)
+					
 	def GenerateImage(self, chord):
 		basisHeader = '''
 #(set-default-paper-size "a4")
@@ -455,8 +759,8 @@ lower = \\relative c {
   %\\midi { }
 }
 '''
-		if self.modes['Chord']:
-			lyfile = "chord_" + chord.GetLyPitch() + "_" + chord.GetQuality() + "_res" + str(self.scoreRes) + ".ly"
+		if chord.GetMode() == 'Chord':
+			lyfile = chord.GetLyName(self.scoreRes)
 			content = basisHeader + \
 			basisUpperBeginning + \
 			basisUpperContentChord + \
@@ -465,8 +769,8 @@ lower = \\relative c {
 			basisLowerContentChord + \
 			basisLowerEnd + \
 			basisFooter
-		elif self.modes['II-V-I']:
-			lyfile = "prog_II-V-I_" + chord.GetLyPitch() + "_res" + str(self.scoreRes) + ".ly"
+		elif chord.GetMode() == 'II-V-I':
+			lyfile = chord.GetLyName(self.scoreRes)
 			content = basisHeader + \
 			basisUpperBeginning + \
 			basisContentII_V_I + \
@@ -475,8 +779,8 @@ lower = \\relative c {
 			basisContentII_V_I + \
 			basisLowerEnd + \
 			basisFooter
-		elif self.modes['V-I']:
-			lyfile = "prog_V-I_" + chord.GetLyPitch() + "_res" + str(self.scoreRes) + ".ly"
+		elif chord.GetMode() == 'V-I':
+			lyfile = chord.GetLyName(self.scoreRes)
 			content = basisHeader + \
 			basisUpperBeginning + \
 			basisContentV_I + \
@@ -488,10 +792,11 @@ lower = \\relative c {
 		else:
 			# Unsupported mode
 			raise
+		
 		lyfile = os.path.join(self.directory, lyfile)
 		f = open(lyfile, "w")
 				
-		if self.modes['Chord']:
+		if chord.GetMode() == 'Chord':
 			# Substitute the chord placeholder with the actual chord definition for the appropriate qualities (in C)
 			if chord.GetQuality() == "Maj7":
 				content = re.sub(r"chordForm1", r"b c e g", content)
@@ -512,14 +817,14 @@ lower = \\relative c {
 				content = re.sub(r"chordForm1", r"c e g", content)
 				content = re.sub(r"chordForm2", r"c e g", content)
 				scalePitch = 'C'
-		elif self.modes['II-V-I']:
+		elif chord.GetMode() == 'II-V-I':
 			content = re.sub(r"IIchordForm1", r"f a c e", content)
 			content = re.sub(r"IIchordForm2", r"c e f a", content)
 			content = re.sub(r"VchordForm1", r"f a b e", content)
 			content = re.sub(r"VchordForm2", r"b, e f a", content)
 			content = re.sub(r"IchordForm1", r"e g a d", content)
 			content = re.sub(r"IchordForm2", r"b c e g", content)
-		elif self.modes['V-I']:
+		elif chord.GetMode() == 'V-I':
 			content = re.sub(r"VchordForm1", r"f a b e", content)
 			content = re.sub(r"VchordForm2", r"b e f a", content)
 			content = re.sub(r"IchordForm1", r"e g a d", content)
@@ -534,6 +839,64 @@ lower = \\relative c {
 		f.write(content)
 		f.close()
 
+		self.CallLilypond(lyfile)
+		
+	def GenerateScaleImage(self, chord):
+		basisHeader = '''
+#(set-default-paper-size "a4")
+
+\\version "2.16.2"
+
+\\include "english.ly"
+'''
+		basisUpperBeginning = '''
+notes = \\relative c' {
+  c d e f 
+  g a b c
+}
+
+upper = \\relative c' {
+  \\clef treble
+  \\key c \\major
+  %\\time 4/4
+'''
+		basisUpperContentMajorScale = '''  
+\\transpose c c \\notes
+'''
+
+		basisUpperEnd = '''
+}
+'''
+		basisFooter = '''
+\\score {
+  \\upper
+  \\layout { }
+  %\\midi { }
+}
+'''
+		if chord.GetScaleKind() == 'Major':
+			lyfile = chord.GetLyScaleName(self.scoreRes)
+			content = basisHeader + \
+			basisUpperBeginning + \
+			basisUpperContentMajorScale + \
+			basisUpperEnd + \
+			basisFooter
+		else:
+			# Unsupported mode
+			raise
+		
+		lyfile = os.path.join(self.directory, lyfile)
+		f = open(lyfile, "w")
+		
+		# Transpose if needed
+		if chord.GetScalePitch() != 'C':
+			content = re.sub(r"transpose c c", r"transpose c %s" % chord.GetLyScalePitch().lower(), content)
+		f.write(content)
+		f.close()
+
+		self.CallLilypond(lyfile)
+		
+	def CallLilypond(self, lyfile):
 		try:
 			catOutputFile = os.path.join(self.directory, "cat_outputFile")
 			f = open(catOutputFile, "w")
@@ -555,7 +918,7 @@ lower = \\relative c {
 			print "rc = %s" % rc
 		except:
 			print "Call to lilypond failed."
-		
+					
 	def OnTimer(self, whatever):
 		if self.pause:
 			return
@@ -573,52 +936,127 @@ lower = \\relative c {
 			return
 		self.elapsedTime = 0
 
-		self.GenerateChord()
-		self.chordDisplay.SetLabel(self.chord.Print())
-							
-		try:
-			# Set the image for the score
-			if not self.displayScore:
-				raise NoImage
-			elif self.chord.GetPitch() == "-":
-				raise NoImage
-			elif self.modes['Chord']:
-				imageFile = "chord_" + self.chord.GetLyPitch() + "_" + self.chord.GetQuality() + "_res" + str(self.scoreRes) + ".png"
-			elif self.modes['II-V-I']:
-				imageFile = "prog_II-V-I_" + self.chord.GetLyPitch() + "_res" + str(self.scoreRes) + ".png"
-			elif self.modes['V-I']:
-				imageFile = "prog_V-I_" + self.chord.GetLyPitch() + "_res" + str(self.scoreRes) + ".png"
-			else:
-				# Unsupported mode
-				raise
-			imageFile = os.path.join(self.directory, imageFile)
-			try:
-				with open(imageFile): pass
-				png = wx.Image(imageFile, wx.BITMAP_TYPE_ANY).ConvertToBitmap()
-			except IOError:
-				raise NoImage
+# 		self.GenerateChord()
+# 		self.chordDisplay.SetLabel(self.chord.Print())
+		# Current chord
+		currChord = self.chordStack.GetCurrent()
+		
+		# Previous and next chords
+		prevChord = self.chordStack.GetPrev()
+		nextChord = self.chordStack.GetNext()
+		
+		# Update mode
+		currChord.SetMode(self.CurrentMode())
+		prevChord.SetMode(self.CurrentMode())
+		nextChord.SetMode(self.CurrentMode())
+		
+		# Update chord display
+		self.chordDisplay.SetLabel(currChord.GetName())
+		self.chordDisplayPrev.SetLabel(prevChord.GetName())
+		self.chordDisplayNext.SetLabel(nextChord.GetName())
+		
+		# Update scale name
+		self.scaleName.SetLabel(currChord.GetScale())
+		
+# 		try:
+# 			# Set the image for the score
+# 			if not self.displayScore:
+# 				raise NoImage
+# 			else:
+# 				try:
+# 					imageFile = currChord.GetImgName(self.scoreRes)
+# 				except:
+# 					raise NoImage
+# 			imageFile = os.path.join(self.directory, imageFile)
+# 			try:
+# 				with open(imageFile): pass
+# 				png = wx.Image(imageFile, wx.BITMAP_TYPE_ANY).ConvertToBitmap()
+# 			except IOError:
+# 				raise NoImage
+# 
+# 		except NoImage:
+# 			png = self.defaultImage
+# 			# Only attempt to generate the score if: 
+# 			# - there is a proper chord
+# 			# - the score is enabled
+# 			if currChord.GetPitch() != "-" and self.displayScore:
+# 				self.GenerateImage(currChord)
+# 		self.chordImage.SetBitmap(png)
+		self.PrepareImage(currChord, "Chord")
 
-		except NoImage:
-			png = self.defaultImage
-			# Only attempt to generate the score if: 
-			# - there is a proper chord
-			# - the score is enabled
-			if self.chord.GetPitch() != "-" and self.displayScore:
-				self.GenerateImage(self.chord)
-			
-		self.chordImage.SetBitmap(png)
+
+# 		try:
+# 			# Set the image for the score
+# 			if not self.displayScale:
+# 				raise NoImage
+# 			else:
+# 				try:
+# 					imageFile = currChord.GetImgName(self.scoreRes)
+# 				except:
+# 					raise NoImage
+# 			imageFile = os.path.join(self.directory, imageFile)
+# 			try:
+# 				with open(imageFile): pass
+# 				png = wx.Image(imageFile, wx.BITMAP_TYPE_ANY).ConvertToBitmap()
+# 			except IOError:
+# 				raise NoImage
+# 
+# 		except NoImage:
+# 			png = self.defaultImage
+# 			# Only attempt to generate the score if: 
+# 			# - there is a proper chord
+# 			# - the score is enabled
+# 			if currChord.GetPitch() != "-" and self.displayScale:
+# 				self.GenerateImage(currChord)
+# 			
+# 		self.scaleImage.SetBitmap(png)
+		self.PrepareImage(currChord, "Scale")
 			
 		# Update the font size in case it has been modified
 		if self.fontSize != self.fontSizeOld:
 			self.font = wx.Font(self.fontSize, wx.SWISS, wx.NORMAL, wx.NORMAL)
 			self.chordDisplay.SetFont(self.font)
+			
+			self.fontSmaller = wx.Font(self.getSmallerFontsize(self.fontSize), wx.SWISS, wx.NORMAL, wx.NORMAL)
+			self.chordDisplayPrev.SetFont(self.fontSmaller)
+			self.chordDisplayNext.SetFont(self.fontSmaller)
+
+			self.fontStatus = wx.Font(self.getSmallerFontsize(self.fontSize), wx.SWISS, wx.NORMAL, wx.NORMAL)
+			
 			self.fontSizeOld = self.fontSize
+# 			self.changedLayout = True
 			
 		# Reset the sizer's size (so that the text window has the right size)		
-		self.panel.Fit()
-# 		self.upperPanel.FitInside()
+# 		self.panel.Fit()
+# 		self.upperPanelPrev.Fit()
+# 		self.upperPanel.Fit()	
+# 		self.upperPanelNext.Fit()
 		
-	def InitUI(self):
+		if self.changedLayout:
+			self.changedLayout = False
+			self.FitLayout()
+			
+		# TEST
+# 		mode = self.CurrentMode()
+# 		tmp = Chord(self.chord.GetPitch(), self.chord.GetQuality(), mode)
+# 		tmp.GenerateRandom(self.AvailablePitches(), self.AvailableQualities(), self.CurrentMode())
+# 		tmp = ""
+# 		tmp += self.chordStack.GetPrev().GetName()
+# 		tmp += " / "
+# 		tmp += self.chordStack.GetCurrent().GetName()
+# 		tmp += " / "
+# 		tmp += self.chordStack.GetNext().GetName()
+# 		self.status.SetLabel(tmp)
+
+ 		# Append a new chord to the stack		
+ 		self.chordStack.updateStack(self.AvailablePitches(), self.AvailableQualities(), self.CurrentMode())
+		# Shift the stack so that the next chord is displayed on the next call
+# 		self.chordStack.Next()
+		
+	def getSmallerFontsize(self, fontsize):
+		return fontsize/2
+	
+	def InitMenus(self):
 		# Menus
 		menubar = wx.MenuBar()
 
@@ -743,6 +1181,11 @@ lower = \\relative c {
 		settingsMenu.Check(displayScoreId, self.displayScore)
 		self.Bind(wx.EVT_MENU, self.MenuSetDisplayScore, id=displayScoreId)
 
+		displayScaleId = wx.NewId()
+		settingsMenu.Append(displayScaleId, "D&isplay scale", "", wx.ITEM_CHECK)
+		settingsMenu.Check(displayScaleId, self.displayScale)
+		self.Bind(wx.EVT_MENU, self.MenuSetDisplayScale, id=displayScaleId)
+
 		stayOnId = wx.NewId()
 		settingsMenu.Append(stayOnId, "Disable &Screensaver", "", wx.ITEM_CHECK)
 		settingsMenu.Check(stayOnId, self.moveMouse)
@@ -769,53 +1212,13 @@ lower = \\relative c {
 
 		self.SetMenuBar(menubar)
 
-		self.SetSize((self.windowSizeX, self.windowSizeY))
-		self.SetTitle('Chord training')
+	def SetChord(self):
+# 		self.chord = Chord(self)
 
-		self.chord = Chord(self)
+		self.chordStack = ChordStack()
+		self.chordStack.Initialize(self.AvailablePitches(), self.AvailableQualities(), self.CurrentMode())
 		
-		# LAYOUT & BACKGROUND COLOURS
-		self.SetBackgroundColour('WHITE') # Background colour of the main window
-
-		# Base panel
-		self.panel = wx.Panel(self, -1)
-		self.panel.SetBackgroundColour('WHITE') # Background colour of the base panel
-
-		# Vertical box with
-		# - Chord name on top
-		# - Corresponding score below
-		self.vbox = wx.BoxSizer(wx.VERTICAL)
-
-		self.upperPanel = wx.Panel(self.panel)
- 		self.upperPanel.SetBackgroundColour('WHITE')	
-		self.vbox.Add(self.upperPanel, 0, wx.EXPAND | wx.ALL, 20)
- 		
- 		
- 		
-		# Test gauge
-		self.timeGaugeMax = 100
-# 		self.timeGauge = wx.Gauge(self, -1, wx.NewId(), (110, 150), (250, 25), style=wx.HORIZONTAL)
-#  		self.timeGauge = wx.Gauge(self, -1, wx.NewId(), wx.DefaultPosition, wx.DefaultSize, wx.GA_VERTICAL)
-#  		self.timeGauge = wx.Gauge(self.panel, id=wx.NewId(), range=self.timeGaugeMax, pos=(50,150), size=(200,20), style=wx.GA_VERTICAL)
- 		self.timeGauge = wx.Gauge(self.panel, id=wx.NewId(), range=self.timeGaugeMax, size=(200,20), style=wx.GA_VERTICAL)
- 		self.timeGauge.SetRange(self.timeGaugeMax)
- 		test = self.timeGauge.IsVertical()
- 		
- 		hboxGauge = wx.BoxSizer(wx.HORIZONTAL)
-  		hboxGauge.Add((50,0))
-  		hboxGauge.Add(self.timeGauge, flag=wx.ALIGN_CENTER)
-  		
-  		self.vbox.Add(hboxGauge, flag=wx.ALIGN_LEFT)
-  		
- 		
- 		
-		lowerPanel = wx.Panel(self.panel)		
- 		lowerPanel.SetBackgroundColour('WHITE')		
-		self.vbox.Add(lowerPanel, 1, wx.EXPAND | wx.ALL, 20)
-		
-		self.panel.SetSizer(self.vbox)
-		
-		
+		# Chord
 		self.fontSize = 0
 		for fontSize in self.fontSizes.keys():
 			if self.fontSizes[fontSize]:
@@ -834,32 +1237,254 @@ lower = \\relative c {
 					self.fontSizes[fontSize] = False
 					
 		self.fontSizeOld = self.fontSize
-		
-		# self.chordDisplay = wx.StaticText(self.panel, -1, self.chord.Print(), (45, 25), style=wx.ALIGN_LEFT)
-		self.chordDisplay = wx.StaticText(self.upperPanel, -1, self.chord.Print(), (30, 25), style=wx.ALIGN_LEFT)
+
+		# Font for chord display
 		self.font = wx.Font(self.fontSize, wx.SWISS, wx.NORMAL, wx.NORMAL)
-		self.chordDisplay.SetFont(self.font)
+		self.fontSmaller = wx.Font(self.getSmallerFontsize(self.fontSize), wx.SWISS, wx.NORMAL, wx.NORMAL)
 
-  		
-# 		if self.displayScore:
-		# imageFile = "chord_C.png"
-		# png = wx.Image(imageFile, wx.BITMAP_TYPE_ANY).ConvertToBitmap()
-		png = self.defaultImage
-		# self.chordImage = wx.StaticBitmap(self.panel, -1, png, (0, 100), (png.GetWidth(), png.GetHeight()))
-		self.chordImage = wx.StaticBitmap(lowerPanel, -1, png, (0, 0), (png.GetWidth(), png.GetHeight()))
+		# Font for the status bar
+		self.fontStatus = wx.Font(self.getSmallerFontsize(self.fontSize), wx.SWISS, wx.NORMAL, wx.NORMAL)
 
-		timerId = wx.NewId()
-		self.timer = wx.Timer(self.panel, timerId)  # message will be sent to the self.panel
-		self.timer.Start(self.refreshPeriod)  # milliseconds
-		wx.EVT_TIMER(self.panel, timerId, self.OnTimer)  # call the OnTimer function
 
-		# Set pause to off
-		self.pause = False
+# 		
+# 	def InitUI_OLD(self):
+# 		self.SetSize((self.windowSizeX, self.windowSizeY))
+# 		self.SetTitle('Chord training')
+# 	
+# 		# LAYOUT & BACKGROUND COLOURS
+# 		self.SetBackgroundColour('WHITE') # Background colour of the main window
+# 
+# 		# Base panel
+# 		self.panel = wx.Panel(self, -1)
+# 		self.panel.SetBackgroundColour('WHITE') # Background colour of the base panel
+# 
+# 		# Previous chord		
+# 		self.chordDisplayPrev = wx.StaticText(self, -1, label="Prev")
+# 		self.chordDisplayPrev.SetFont(self.font)
+# 
+# 		# Current chord
+# 		self.chordDisplay = wx.StaticText(self, -1, label="Chord")
+# 		self.chordDisplay.SetFont(self.font)
+# 
+# 		# Next chord
+# 		self.chordDisplayNext = wx.StaticText(self, -1, label="Next")
+# 		self.chordDisplayNext.SetFont(self.font)
+# 
+# 		# Score
+# 		png = self.defaultImage
+# 		# self.chordImage = wx.StaticBitmap(self.panel, -1, png, (0, 100), (png.GetWidth(), png.GetHeight()))
+# 		self.chordImage = wx.StaticBitmap(self, -1, png, (0, 0), (png.GetWidth(), png.GetHeight()))
+# 
+# 		# Vertical box with
+# 		# - Chord name on top
+# 		# - Corresponding score below
+# 		self.vbox = wx.BoxSizer(wx.VERTICAL)
+# 
+# 		hboxChord = wx.BoxSizer(wx.HORIZONTAL)
+# # 		hboxChord = wx.StaticBoxSizer(wx.StaticBox(self),wx.HORIZONTAL)
+# # 		self.upperPanel = wx.Panel(self.panel)
+# #  		self.upperPanel.SetBackgroundColour('WHITE')	
+# #  		self.upperPanelPrev = wx.Panel(self.panel)
+# #  		self.upperPanelPrev.SetBackgroundColour('WHITE')
+# #  		self.upperPanelNext = wx.Panel(self.panel)
+# #  		self.upperPanelNext.SetBackgroundColour('WHITE')
+# # 		self.vbox.Add(self.upperPanel, 0, wx.EXPAND | wx.ALL, 20)
+# 		hboxChord.Add(self.chordDisplayPrev, 1, wx.EXPAND | wx.ALL, 10)
+# 		hboxChord.Add(self.chordDisplay, 2, wx.EXPAND | wx.ALL, 10)
+# 		hboxChord.Add(self.chordDisplayNext, 1, wx.EXPAND | wx.ALL, 10)
+# 		self.vbox.Add(hboxChord, 0, wx.EXPAND, 10)
+# 		
+# 		# Time gauge
+# 		self.timeGaugeMax = 100
+#  		self.timeGauge = wx.Gauge(self, id=wx.NewId(), range=self.timeGaugeMax, size=(200,20), style=wx.GA_HORIZONTAL)
+#  		self.timeGauge.SetRange(self.timeGaugeMax)
+#  		
+#  		hboxGauge = wx.BoxSizer(wx.HORIZONTAL)
+#   		hboxGauge.Add((50,0))
+#   		hboxGauge.Add(self.timeGauge, 1, wx.EXPAND | wx.ALL, 10)
+#   		
+#   		self.vbox.Add(hboxGauge, 1, flag=wx.EXPAND)
+#   				
+# # 		lowerPanel = wx.Panel(self.panel)		
+# #  		lowerPanel.SetBackgroundColour('WHITE')		
+# # 		self.vbox.Add(lowerPanel, 1, wx.EXPAND | wx.ALL, 20)
+# 		self.vbox.Add(self.chordImage, 1, wx.EXPAND | wx.ALL, 10)
+# 		
+# 		self.panel.SetSizer(self.vbox)
+# 				
+# 		self.SetSizerAndFit(hboxChord)
+
+	def InitUI(self):
+
+		self.SetSize((self.windowSizeX, self.windowSizeY))
+		self.SetTitle('Chord Training')
 		
+		self.panel = wx.Panel(self, -1)
+
+ 		# Spacers to add room around objects 
+ 		hSpacer = wx.Size(self.hSpacerLength, 0)
+ 		vSpacer = wx.Size(0, self.vSpacerLength)
+ 		
+		self.SetBackgroundColour(wx.WHITE)
+		self.layout = wx.BoxSizer(wx.VERTICAL)
+
+		# Current chord, previous and next
+		row = wx.BoxSizer(wx.HORIZONTAL)
+		self.chordDisplayPrev = wx.StaticText(self,label="Prev")#,style=wx.BORDER_DOUBLE)
+		self.chordDisplayPrev.SetFont(self.fontSmaller)
+		self.chordDisplayPrev.SetForegroundColour('GREY')
+				
+		self.chordDisplay = wx.StaticText(self,label="Chord")#,style=wx.BORDER_DOUBLE)
+		self.chordDisplay.SetFont(self.font)
+		
+		self.chordDisplayNext = wx.StaticText(self,label="Next")#,style=wx.BORDER_DOUBLE)
+		self.chordDisplayNext.SetFont(self.fontSmaller)
+		self.chordDisplayNext.SetForegroundColour('GREY')
+		
+		row.Add(self.chordDisplayPrev,1, wx.EXPAND|wx.ALL,10)
+		row.Add(self.chordDisplay,2, wx.EXPAND|wx.ALL,10)
+		row.Add(self.chordDisplayNext,1, wx.EXPAND|wx.ALL,10)
+		self.layout.Add(row, 0, wx.EXPAND) # add row 4 with proportion = 0 and wx.EXPAND
+
+		# Time gauge
+		self.timeGaugeMax = 100
+		self.timeGaugeCurrent = 0
+ 		self.timeGauge = wx.Gauge(self, id=wx.NewId(), range=self.timeGaugeMax, style=wx.GA_HORIZONTAL)
+ 		self.timeGauge.SetRange(self.timeGaugeMax)
+
+ 		hboxGauge = wx.BoxSizer(wx.HORIZONTAL)
+  		hboxGauge.Add(hSpacer, 0, wx.EXPAND|wx.ALL, 10)
+  		hboxGauge.Add(self.timeGauge, 1, wx.EXPAND|wx.ALL, 10)
+  		hboxGauge.Add(hSpacer, 0, wx.EXPAND|wx.ALL, 10)
+
+		self.layout.Add(hboxGauge,0,wx.EXPAND) # add gauge
+		
+		self.maxWidthScale = wx.Size(5, 0)
+		self.maxHeightScale = wx.Size(0, 5)
+
+		hboxImgSize = wx.BoxSizer(wx.HORIZONTAL)
+		hboxImgSize.Add(hSpacer, 0, wx.EXPAND|wx.ALL,10)
+		hboxImgSize.Add(self.maxWidthScale, 1, wx.EXPAND|wx.ALL, 10) # add image
+		hboxImgSize.Add(hSpacer, 0, wx.EXPAND|wx.ALL,10)
+		self.layout.Add(hboxImgSize, 0, wx.EXPAND)
+			
+ 		self.chordImage = wx.StaticBitmap(self, -1, wx.EmptyImage(5, 5).ConvertToBitmap())
+		
+		# Chord score
+		self.layout.Add(vSpacer)
+		hboxImg = wx.BoxSizer(wx.HORIZONTAL)
+		hboxImg.Add(self.maxHeightScale, 0, wx.EXPAND|wx.ALL,10)
+		hboxImg.Add(hSpacer, 0, wx.EXPAND|wx.ALL,10)
+		hboxImg.Add(self.chordImage, 1, wx.EXPAND | wx.ALL, 10) # add image
+		hboxImg.Add(hSpacer, 0, wx.EXPAND|wx.ALL,10)
+		self.layout.Add(hboxImg,0,wx.EXPAND)
+		self.layout.Add(vSpacer)
+ 
+		self.toneIndex = 0
+		self.scaleImage = wx.StaticBitmap(self, -1, wx.EmptyImage(5, 5).ConvertToBitmap())
+
+		self.maxWidthScale = wx.Size(5, 0)
+		self.maxHeightScale = wx.Size(0, 5)
+ 
+		hboxImgSize2 = wx.BoxSizer(wx.HORIZONTAL)
+		hboxImgSize2.Add(hSpacer, 0, wx.EXPAND|wx.ALL, 10)
+		hboxImgSize2.Add(self.maxWidthScale, 1, wx.EXPAND|wx.ALL, 10) # add image
+		hboxImgSize2.Add(hSpacer, 0, wx.EXPAND|wx.ALL, 10)
+		self.layout.Add(hboxImgSize2, 0, wx.EXPAND)
+		self.layout.Add(vSpacer)
+		 			
+		# Scale name 
+		row = wx.BoxSizer(wx.HORIZONTAL)
+		self.scaleNameTitle = wx.StaticText(self,label="Scale:")
+		self.scaleNameTitle.SetFont(self.fontSmaller)
+		self.scaleName = wx.StaticText(self,label="")
+		self.scaleName.SetFont(self.font)
+		self.scaleNameDummy = wx.StaticText(self,label="")
+		self.scaleNameDummy.SetFont(self.fontSmaller)
+		
+		row.Add(self.scaleNameTitle,1, wx.EXPAND|wx.ALL,10)
+		row.Add(self.scaleName,2, wx.EXPAND|wx.ALL,10)
+		row.Add(self.scaleNameDummy,1, wx.EXPAND|wx.ALL,10)
+		self.layout.Add(row, 0, wx.EXPAND) # add row 4 with proportion = 0 and wx.EXPAND
+
+		# Scale score
+		self.layout.Add(vSpacer)
+		hboxImg2 = wx.BoxSizer(wx.HORIZONTAL)
+		hboxImg2.Add(self.maxHeightScale, 0, wx.EXPAND|wx.ALL,10)
+		hboxImg2.Add(hSpacer, 0, wx.EXPAND|wx.ALL,10)
+		hboxImg2.Add(self.scaleImage, 1, wx.EXPAND|wx.ALL, 10) # add image
+		hboxImg2.Add(hSpacer, 0, wx.EXPAND|wx.ALL,10)
+		self.layout.Add(hboxImg2, 0, wx.EXPAND)
+		self.layout.Add(vSpacer)		
+
+		# Status bar
+		self.status = wx.StaticText(self,label="")#,style=wx.BORDER_DOUBLE)
+		self.status.SetFont(self.fontStatus)
+
+		statBar = wx.BoxSizer(wx.HORIZONTAL)
+		statBar.Add(self.status, 1, wx.EXPAND|wx.ALL,10)
+		self.layout.Add(statBar, 0, wx.EXPAND)
+
+	def GetMaxSizeChord(self):
+		# Determine the size of the largest image
+		maxWidth = 5
+		maxHeight = 5
+
+		chord = Chord()
+		
+		listPitches = self.AvailablePitches()
+		
+		mode = self.CurrentMode()
+		chord.SetMode(mode)
+		
+		if mode == 'II-V-I' or mode == 'V-I':
+			listQualities = ['Maj7']
+		else:
+			listQualities = self.AvailableQualities()
+			
+		for pitch in listPitches:
+			chord.SetPitch(pitch)
+			for quality in listQualities:
+				chord.SetQuality(quality)
+				imageFile = chord.GetImgName(self.scoreRes)
+				imageFile = os.path.join(self.directory, imageFile)
+				try:
+					png = wx.Image(imageFile, wx.BITMAP_TYPE_ANY).ConvertToBitmap()
+					maxWidth = max(maxWidth, png.GetWidth())
+					maxHeight = max(maxHeight, png.GetHeight())
+				except:
+					pass
+		
+		return (maxWidth, maxHeight)
+	
+	def FitLayout(self):
+		"""Update layout when some objects changed size"""
+		
+		(maxWidth, maxHeight) = self.GetMaxSizeChord()
+		self.maxWidthScale = wx.Size(maxWidth, 0)
+		self.maxHeightScale = wx.Size(0, maxHeight)
+
+# 		(maxWidth, maxHeight) = self.GetMaxSizeScale()
+# 		self.maxWidthScale = wx.Size(maxWidth, 0)
+# 		self.maxHeightScale = wx.Size(0, maxHeight)
+
+		self.SetSizerAndFit(self.layout)
+
+	def SetTimer(self):
+		timerId = wx.NewId()
+		self.timer = wx.Timer(self, timerId)  # message will be sent to the self.panel
+		self.timer.Start(self.refreshPeriod)  # milliseconds
+		wx.EVT_TIMER(self, timerId, self.OnTimer)  # call the OnTimer function
+
+
+	def KeyBindings(self):		
+		# Needed to catch key presses (on linux, mac os does not seem to need that...)		
+		self.panel.SetFocus()
+		 
 		# Quit upon pressing ESC
  		self.panel.Bind(wx.EVT_KEY_DOWN, self.OnKeyDown)
-		lowerPanel.Bind(wx.EVT_KEY_DOWN, self.OnKeyDown)
-		self.upperPanel.Bind(wx.EVT_KEY_DOWN, self.OnKeyDown)
+# 		lowerPanel.Bind(wx.EVT_KEY_DOWN, self.OnKeyDown)
+# 		self.upperPanel.Bind(wx.EVT_KEY_DOWN, self.OnKeyDown)
 
 	def MenuSetTones(self, evt):
 		if evt.GetId() == self.tonesFuncId["all"]:
@@ -895,6 +1520,9 @@ lower = \\relative c {
 		for quality in self.qualities.keys():
 		 	self.qualitiesMenu.Enable(self.qualitiesMenuId[quality], self.modes['Chord'])
 
+		# Update the layout
+		self.changedLayout = True
+		
 	def MenuSetDuration(self, evt):
 		duration = self.durationMenuIdRev[evt.GetId()]
 		self.duration = duration
@@ -908,6 +1536,9 @@ lower = \\relative c {
 			else:
 				self.fontSizes[fontSizeLoop] = False
 
+		# Update the layout
+		self.changedLayout = True
+
 	def MenuSetScoreRes(self, evt):
 		scoreRes = self.scoreResMenuIdRev[evt.GetId()]
 		for scoreResLoop in self.scoreRess.keys():
@@ -917,12 +1548,24 @@ lower = \\relative c {
 			else:
 				self.scoreRess[scoreResLoop] = False
 
+		# Update the layout
+		self.changedLayout = True
+
 	def MenuSetSingleThread(self, evt):
 		self.singleThread = evt.IsChecked()
 		
 	def MenuSetDisplayScore(self, evt):
 		self.displayScore = evt.IsChecked()
+
+		# Update the layout
+		self.changedLayout = True
 	
+	def MenuSetDisplayScale(self, evt):
+		self.displayScale = evt.IsChecked()
+
+		# Update the layout
+		self.changedLayout = True
+
 	def MenuSetStayOn(self, evt):
 		self.moveMouse = evt.IsChecked()
 			
@@ -937,50 +1580,71 @@ lower = \\relative c {
 			self.OnQuit(e)
 		elif key == wx.WXK_SPACE:
 			self.pause = not self.pause
-			pauseLabel = " (Paused)"
-			label = self.chordDisplay.GetLabel()
+			pauseLabel = "(Paused)"
 			if self.pause:
-				self.chordDisplayLabelOrig = label
-				label += pauseLabel
+				label = pauseLabel
 			else:
-				# label = re.sub(r"%s" % pauseLabel, r"", label)
-				label = self.chordDisplayLabelOrig
-			self.chordDisplay.SetLabel(label)
+				label = ""
+			self.status.SetLabel(label)
 
-	def GenerateChord(self):
-		checkPitch = False
-		checkQuality = False
+# 	def GenerateChord(self):
+# 		checkPitch = False
+# 		checkQuality = False
+# 		for pitch in self.pitches.keys():
+# 			if self.pitches[pitch] is True:
+# 				checkPitch = True
+# 				break
+# 		for quality in self.qualities.keys():
+# 			if self.qualities[quality] is True:
+# 				checkQuality = True
+# 				break
+# 		if checkPitch is False or checkQuality is False:
+# 			self.chord.SetPitch("-")
+# 			self.chord.SetQuality("---")
+# 			return
+# 
+# 		chordOld = self.chord.Print()
+# 		while (self.chord.Print() == chordOld):
+# 			pitch = random.choice(self.pitches.keys())
+# 			while (self.pitches[pitch] is not True):
+# 				pitch = random.choice(self.pitches.keys())
+# 			self.chord.SetPitch(pitch)
+# 			
+# 			# Only select a quality for chord mode 
+# 			# (qualities for II-V-I modes are obvious)
+# 			if (self.modes["Chord"]):
+# 				quality = random.choice(self.qualities.keys())
+# 				while (self.qualities[quality] is not True):
+# 					quality = random.choice(self.qualities.keys())
+# 				self.chord.SetQuality(quality)
+# 			else:
+# 				self.chord.SetQuality("---")
+	
+	def AvailablePitches(self):
+		list = []
 		for pitch in self.pitches.keys():
-			if self.pitches[pitch] is True:
-				checkPitch = True
-				break
+			if self.pitches[pitch]:
+				list.append(pitch)
+	
+		return list
+	
+	def AvailableQualities(self):
+		list = []
 		for quality in self.qualities.keys():
-			if self.qualities[quality] is True:
-				checkQuality = True
+			if self.qualities[quality]:
+				list.append(quality)
+	
+		return list
+	
+	def CurrentMode(self):
+		mode = None
+		for modeLoop in self.modes.keys():
+			if self.modes[modeLoop]:
+				mode = modeLoop
 				break
-		if checkPitch is False or checkQuality is False:
-			self.chord.SetPitch("-")
-			self.chord.SetQuality("---")
-			return
-
-		chordOld = self.chord.Print()
-		while (self.chord.Print() == chordOld):
-			pitch = random.choice(self.pitches.keys())
-			while (self.pitches[pitch] is not True):
-				pitch = random.choice(self.pitches.keys())
-			self.chord.SetPitch(pitch)
 			
-			# Only select a quality for chord mode 
-			# (qualities for II-V-I modes are obvious)
-			if (self.modes["Chord"]):
-				quality = random.choice(self.qualities.keys())
-				while (self.qualities[quality] is not True):
-					quality = random.choice(self.qualities.keys())
-				self.chord.SetQuality(quality)
-			else:
-				self.chord.SetQuality("---")
-
-
+		return mode
+	
 def main():
 	mw = wx.App()
 	ChordTraining(None)
