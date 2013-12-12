@@ -231,28 +231,34 @@ class Chord:
 		self.updateScale = False
 		
 		if self.mode == 'Chord':
-			if self.quality == 'Maj7':
-				self.scalePitch = self.pitch
-				self.scaleKind = "Major"
-			elif self.quality == '7':
-				indexVpitch = self.pitches.index(self.pitch)
-				indexPitch = indexVpitch + 1
-				if indexPitch >= len(self.pitches): 
-					indexPitch -= len(self.pitches)
-				self.scalePitch = self.pitches[indexPitch]
-				self.scaleKind = "Major"
-			elif self.quality == 'min7':
-				indexIIpitch = self.pitches.index(self.pitch)
-				indexPitch = indexIIpitch + 2
-				if indexPitch >= len(self.pitches): 
-					indexPitch -= len(self.pitches)
-				self.scalePitch = self.pitches[indexPitch]
-				self.scaleKind = "Major"
-			self.scale = self.scalePitch + " Major"
+			if self.quality == 'Maj7' or self.quality == '7' or self.quality == 'min7':
+				if self.quality == 'Maj7':
+					self.scalePitch = self.pitch
+					self.scaleKind = "Major"
+				elif self.quality == '7':
+					indexVpitch = self.pitches.index(self.pitch)
+					indexPitch = indexVpitch + 1
+					if indexPitch >= len(self.pitches): 
+						indexPitch -= len(self.pitches)
+					self.scalePitch = self.pitches[indexPitch]
+					self.scaleKind = "Major"
+				elif self.quality == 'min7':
+					indexIIpitch = self.pitches.index(self.pitch)
+					indexPitch = indexIIpitch + 2
+					if indexPitch >= len(self.pitches): 
+						indexPitch -= len(self.pitches)
+					self.scalePitch = self.pitches[indexPitch]
+					self.scaleKind = "Major"
+			elif (self.quality == 'dim7'):
+				index = self.pitches.index(self.pitch) % 3
+				self.scalePitch = self.pitches[index]
+				self.scaleKind = "Diminished"
+
+			self.scale = self.scalePitch + " " + self.scaleKind
 		elif self.mode == 'II-V-I' or self.mode == 'V-I':
 			self.scalePitch = self.pitch
 			self.scaleKind = "Major"
-			self.scale = self.scalePitch + " Major"
+			self.scale = self.scalePitch + " " + self.scaleKind
 		else:
 			self.scale = "<Unknown mode>"
 
@@ -851,8 +857,7 @@ lower = \\relative c {
 '''
 		basisUpperBeginning = '''
 notes = \\relative c' {
-  c d e f 
-  g a b c
+  scaleDefinition 
 }
 
 upper = \\relative c' {
@@ -874,13 +879,17 @@ upper = \\relative c' {
   %\\midi { }
 }
 '''
-		if chord.GetScaleKind() == 'Major':
+		if chord.GetScaleKind() == 'Major' or chord.GetScaleKind() == 'Diminished':
 			lyfile = chord.GetLyScaleName(self.scoreRes)
 			content = basisHeader + \
 			basisUpperBeginning + \
 			basisUpperContentMajorScale + \
 			basisUpperEnd + \
 			basisFooter
+			if chord.GetScaleKind() == 'Major':
+				content = re.sub(r"scaleDefinition", r"c d e f g a b c", content)
+			elif chord.GetScaleKind() == 'Diminished':
+				content = re.sub(r"scaleDefinition", r"c d ef f gf af a b c", content)
 		else:
 			# Unsupported mode
 			raise
