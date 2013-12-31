@@ -661,6 +661,24 @@ class ChordTraining(wx.Frame):
 					first = False
 				else:
 					self.scoreRess[scoreRes] = False
+	
+	def UpdateFontSize(self):
+		if self.fontSize != self.fontSizeOld:
+			self.font = wx.Font(self.fontSize, wx.SWISS, wx.NORMAL, wx.NORMAL)
+			self.chordDisplay.SetFont(self.font)
+			
+			self.fontSmaller = wx.Font(self.getSmallerFontsize(self.fontSize), wx.SWISS, wx.NORMAL, wx.NORMAL)
+			self.chordDisplayPrev.SetFont(self.fontSmaller)
+			self.chordDisplayNext.SetFont(self.fontSmaller)
+
+			self.fontStatus = wx.Font(self.getSmallerFontsize(self.fontSize), wx.SWISS, wx.NORMAL, wx.NORMAL)
+			
+			self.scaleNameTitle.SetFont(self.fontSmaller)
+			self.scaleName.SetFont(self.font)
+			self.status.SetFont(self.fontStatus)
+
+			self.fontSizeOld = self.fontSize
+# 			self.changedLayout = True
 			
 	def PrepareImage(self, currChord, imageMode):
 		try:
@@ -1022,18 +1040,23 @@ upper = \\relative c' {
 		self.PrepareImage(currChord, "Scale")
 			
 		# Update the font size in case it has been modified
-		if self.fontSize != self.fontSizeOld:
-			self.font = wx.Font(self.fontSize, wx.SWISS, wx.NORMAL, wx.NORMAL)
-			self.chordDisplay.SetFont(self.font)
-			
-			self.fontSmaller = wx.Font(self.getSmallerFontsize(self.fontSize), wx.SWISS, wx.NORMAL, wx.NORMAL)
-			self.chordDisplayPrev.SetFont(self.fontSmaller)
-			self.chordDisplayNext.SetFont(self.fontSmaller)
+# 		if self.fontSize != self.fontSizeOld:
+# 			self.font = wx.Font(self.fontSize, wx.SWISS, wx.NORMAL, wx.NORMAL)
+# 			self.chordDisplay.SetFont(self.font)
+# 			
+# 			self.fontSmaller = wx.Font(self.getSmallerFontsize(self.fontSize), wx.SWISS, wx.NORMAL, wx.NORMAL)
+# 			self.chordDisplayPrev.SetFont(self.fontSmaller)
+# 			self.chordDisplayNext.SetFont(self.fontSmaller)
+# 
+# 			self.fontStatus = wx.Font(self.getSmallerFontsize(self.fontSize), wx.SWISS, wx.NORMAL, wx.NORMAL)
+# 			
+# 			self.scaleNameTitle.SetFont(self.fontSmaller)
+# 			self.scaleName.SetFont(self.font)
+# 
+# 			self.fontSizeOld = self.fontSize
+# # 			self.changedLayout = True
 
-			self.fontStatus = wx.Font(self.getSmallerFontsize(self.fontSize), wx.SWISS, wx.NORMAL, wx.NORMAL)
-			
-			self.fontSizeOld = self.fontSize
-# 			self.changedLayout = True
+		self.UpdateFontSize()
 			
 		# Reset the sizer's size (so that the text window has the right size)		
 # 		self.panel.Fit()
