@@ -278,14 +278,20 @@ class ChordStack():
 		if self.curr > 0:
 			self.curr -= 1
 			
-	def updateStack(self, listPitches, listQualities, currentMode):
+	def UpdateStack(self, listPitches, listQualities, currentMode):
 		""" Remove old elements and append new ones """
 		self.elements.pop(0)
 		# TODO: Prevent repetitions
 		self.AddElement(listPitches, listQualities, currentMode)
 		
-	def RecreateNext(self):
+	def RecreateNext(self, listPitches, listQualities, currentMode):
 		""" Redefine elements up the list in case of a change in properties """
+		# Remove the last elements in the list up to the next chord
+		del self.elements[self.nbFurtherItems + 1:]
+		# Add new elements conforming to the new prescriptions
+		for i in range(0, self.nbFurtherItems - 1):
+			# TODO: Prevent repetitions
+			self.AddElement(listPitches, listQualities, currentMode)
 
 	def GetCurrent(self):
 		""" Return the current chord object """
@@ -433,6 +439,9 @@ class ChordTraining(wx.Frame):
 		# Set elapsed time so that the layout is refreshed immediately at the start of the program
 		self.elapsedTime = self.duration * 1000
 		self.changedLayout = True
+		
+		# Indicators for new parameters (when True leads to a renewal of the upcoming chords in the stack)
+		self.changedParameters = False
 		
 		self.Centre()
 		self.Show(True)
@@ -902,6 +911,11 @@ upper = \\relative c' {
 			return
 		self.elapsedTime = 0
 
+		# Renew upcoming chords in the stack upon changes in the parameters
+		if self.changedParameters:
+			self.chordStack.RecreateNext(self.AvailablePitches(), self.AvailableQualities(), self.CurrentMode())
+			self.changedParameters = False
+
 		# Current chord
 		currChord = self.chordStack.GetCurrent()
 		
@@ -946,7 +960,7 @@ upper = \\relative c' {
 # 		self.status.SetLabel(tmp)
 
  		# Append a new chord to the stack		
- 		self.chordStack.updateStack(self.AvailablePitches(), self.AvailableQualities(), self.CurrentMode())
+ 		self.chordStack.UpdateStack(self.AvailablePitches(), self.AvailableQualities(), self.CurrentMode())
 		# Shift the stack so that the next chord is displayed on the next call
 # 		self.chordStack.Next()
 		
@@ -1330,10 +1344,14 @@ upper = \\relative c' {
 		else:
 			tone = self.tonesMenuIdRev[evt.GetId()]
 			self.pitches[tone] = evt.IsChecked()
+		# Mark the current parameters as new, so as to renew the chord stack 
+		self.changedParameters = True
 
 	def MenuSetQualities(self, evt):
 		quality = self.qualitiesMenuIdRev[evt.GetId()]
 		self.qualities[quality] = evt.IsChecked()
+		# Mark the current parameters as new, so as to renew the chord stack 
+		self.changedParameters = True
 
 	def MenuSetMode(self, evt):
 		mode = self.modeMenuIdRev[evt.GetId()]
@@ -1410,8 +1428,10 @@ upper = \\relative c' {
 			self.pause = not self.pause
 			pauseLabel = "(Paused)"
 			if self.pause:
+				self.timer.Stop()
 				label = pauseLabel
 			else:
+				self.timer.Start(self.refreshPeriod)  # milliseconds
 				label = ""
 			self.status.SetLabel(label)
 	
