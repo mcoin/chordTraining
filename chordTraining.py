@@ -142,23 +142,24 @@ class Chord:
 	def GetName(self):
 		if self.mode == 'Chord':
 			self.name = self.pitch + " " + self.quality
-		elif self.mode == 'II-V-I' or self.mode == 'V-I':
+		elif self.mode == 'II-V-I' or self.mode == 'II-V' or self.mode == 'V-I':
 			try:
 				indexPitch = self.pitches.index(self.pitch)
 			except:
 				return '- -'
 			progression = ''
 			
-			if self.mode == 'II-V-I':
+			if self.mode == 'II-V-I' or self.mode == 'II-V':
 				indexIIpitch = indexPitch - 2
 				IIpitch = self.pitches[indexIIpitch]
 				progression += IIpitch + ' min7' + '\n'
 			
 			indexVpitch = indexPitch - 1
 			Vpitch = self.pitches[indexVpitch]	
-			progression += Vpitch + ' 7' + '\n'
+			progression += Vpitch + ' 7'
+			if self.mode != 'II-V':
+				progression += '\n' + self.pitch + ' Maj7'
 			
-			progression += self.pitch + ' Maj7'
 			self.name = progression
 		else:
 			self.name = "<Unknown mode>"
@@ -195,7 +196,7 @@ class Chord:
 				self.scaleKind = "Diminished"
 
 			self.scale = self.scalePitch + " " + self.scaleKind
-		elif self.mode == 'II-V-I' or self.mode == 'V-I':
+		elif self.mode == 'II-V-I' or self.mode == 'II-V' or self.mode == 'V-I':
 			self.scalePitch = self.pitch
 			self.scaleKind = "Major"
 			self.scale = self.scalePitch + " " + self.scaleKind
@@ -211,6 +212,8 @@ class Chord:
 			self.fileName = "chord_" + self.GetLyPitch() + "_" + self.GetQuality() + "_res%s%s"
 		elif self.mode == 'II-V-I':
 			self.fileName = "prog_II-V-I_" + self.GetLyPitch() + "_res%s%s"
+		elif self.mode == 'II-V':
+			self.fileName = "prog_II-V_" + self.GetLyPitch() + "_res%s%s"
 		elif self.mode == 'V-I':
 			self.fileName = "prog_V-I_" + self.GetLyPitch() + "_res%s%s"
 		else:
@@ -346,6 +349,7 @@ class ChordTraining(wx.Frame):
 		self.modes = collections.OrderedDict()
 		self.modes['Chord'] = True
 		self.modes['II-V-I'] = False
+		self.modes['II-V'] = False
 		self.modes['V-I'] = False
 
 		self.duration = 5  # s
@@ -695,6 +699,12 @@ upper = \\relative c' {
   <IchordForm1>2
   <IchordForm2>2
 '''
+		basisContentII_V = '''  
+  <IIchordForm1>2
+  <IIchordForm2>2 
+  <VchordForm1>2
+  <VchordForm2>2
+'''
 		basisContentV_I = '''  
   <VchordForm1>2
   <VchordForm2>2
@@ -751,6 +761,16 @@ lower = \\relative c {
 			basisContentII_V_I + \
 			basisLowerEnd + \
 			basisFooter
+		elif chord.GetMode() == 'II-V':
+			lyfile = chord.GetLyName(self.scoreRes)
+			content = basisHeader + \
+			basisUpperBeginning + \
+			basisContentII_V + \
+			basisUpperEnd + \
+			basisLowerBeginning + \
+			basisContentII_V + \
+			basisLowerEnd + \
+			basisFooter
 		elif chord.GetMode() == 'V-I':
 			lyfile = chord.GetLyName(self.scoreRes)
 			content = basisHeader + \
@@ -796,6 +816,11 @@ lower = \\relative c {
 			content = re.sub(r"VchordForm2", r"b, e f a", content)
 			content = re.sub(r"IchordForm1", r"e g a d", content)
 			content = re.sub(r"IchordForm2", r"b c e g", content)
+		elif chord.GetMode() == 'II-V':
+			content = re.sub(r"IIchordForm1", r"f a c e", content)
+			content = re.sub(r"IIchordForm2", r"c e f a", content)
+			content = re.sub(r"VchordForm1", r"f a b e", content)
+			content = re.sub(r"VchordForm2", r"b, e f a", content)
 		elif chord.GetMode() == 'V-I':
 			content = re.sub(r"VchordForm1", r"f a b e", content)
 			content = re.sub(r"VchordForm2", r"b e f a", content)
@@ -1279,7 +1304,7 @@ upper = \\relative c' {
 		mode = self.CurrentMode()
 		chord.SetMode(mode)
 		
-		if mode == 'II-V-I' or mode == 'V-I':
+		if mode == 'II-V-I' or mode == 'II-V' or mode == 'V-I':
 			listQualities = ['Maj7']
 		else:
 			listQualities = self.AvailableQualities()
