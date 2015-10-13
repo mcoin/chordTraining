@@ -190,6 +190,24 @@ class Chord:
 						indexPitch -= len(self.pitches)
 					self.scalePitch = self.pitches[indexPitch]
 					self.scaleKind = "Major"
+			elif self.quality == 'minMaj7' or self.quality == 'alt' or self.quality == 'min7b5':
+				if self.quality == 'minMaj7':
+					self.scalePitch = self.pitch
+					self.scaleKind = "Minor"
+				elif self.quality == 'alt':
+					indexVpitch = self.pitches.index(self.pitch)
+					indexPitch = indexVpitch + 5 
+					if indexPitch >= len(self.pitches): 
+						indexPitch -= len(self.pitches)
+					self.scalePitch = self.pitches[indexPitch]
+					self.scaleKind = "Minor"
+				elif self.quality == 'min7b5':
+					indexIIpitch = self.pitches.index(self.pitch)
+					indexPitch = indexIIpitch + 3
+					if indexPitch >= len(self.pitches): 
+						indexPitch -= len(self.pitches)
+					self.scalePitch = self.pitches[indexPitch]
+					self.scaleKind = "Minor"
 			elif (self.quality == 'dim7'):
 				index = self.pitches.index(self.pitch) % 3
 				self.scalePitch = self.pitches[index]
@@ -339,11 +357,13 @@ class ChordTraining(wx.Frame):
 		self.qualities['min7'] = True
 		self.qualities['7'] = True
 		self.qualities['Maj7'] = True
+		self.qualities['minMaj7'] = False
+		self.qualities['alt'] = False
+		self.qualities['min7b5'] = False
 		self.qualities['min'] = False
 		self.qualities['Maj'] = False
 		self.qualities['7sus4'] = False
 		self.qualities['dim7'] = False
-		self.qualities['min7b5'] = False
 		self.qualities['aug'] = False
 
 		self.modes = collections.OrderedDict()
@@ -678,6 +698,8 @@ class ChordTraining(wx.Frame):
 \\version "2.16.2"
 
 \\include "english.ly"
+
+melodicMinor = #`((0 . ,NATURAL) (1 . ,NATURAL) (2 . ,FLAT) (3 . ,NATURAL) (4 . ,NATURAL) (5 . ,NATURAL) (6 . ,NATURAL))
 '''
 		basisUpperBeginning = '''
 upper = \\relative c' {
@@ -801,9 +823,40 @@ lower = \\relative c {
 				content = re.sub(r"chordForm1", r"ef g bf d", content)
 				content = re.sub(r"chordForm2", r"bf d ef g", content)
 				content = re.sub(r"\\key c \\major", r"\\key bf \\major", content)
+			elif chord.GetQuality() == "minMaj7":
+				content = re.sub(r"chordForm1", r"ef g b d", content)
+				content = re.sub(r"chordForm2", r"b d ef g", content)
+				content = re.sub(r"\\key c \\major", r"\\key c \\melodicMinor", content)
+			elif chord.GetQuality() == "alt":
+				if chord.GetPitch() == 'Db' or \
+				chord.GetPitch() == 'Eb' or \
+				chord.GetPitch() == 'F' or \
+				chord.GetPitch() == 'Ab' or \
+				chord.GetPitch() == 'Bb':
+					# Avoid very weird key signatures for certain pitches
+					content = re.sub(r"chordForm1", r"e gs as ds", content)
+					content = re.sub(r"chordForm2", r"as ds e gs", content)
+					content = re.sub(r"\\key c \\major", r"\\key cs \\melodicMinor", content)
+				else:
+					content = re.sub(r"chordForm1", r"ff af bf ef", content)
+					content = re.sub(r"chordForm2", r"bf ef ff af", content)
+					content = re.sub(r"\\key c \\major", r"\\key df \\melodicMinor", content)
+			elif chord.GetQuality() == "min7b5":
+				if chord.GetPitch() == 'Db' or \
+				chord.GetPitch() == 'Eb' or \
+				chord.GetPitch() == 'Ab':
+					# Avoid very weird key signatures for certain pitches
+					content = re.sub(r"chordForm1", r"ds fs as d", content)
+					content = re.sub(r"chordForm2", r"as d ds fs", content)
+					content = re.sub(r"\\key c \\major", r"\\key ds \\melodicMinor", content)
+				else:
+					content = re.sub(r"chordForm1", r"ef gf bf d", content)
+					content = re.sub(r"chordForm2", r"bf d ef gf", content)
+					content = re.sub(r"\\key c \\major", r"\\key ef \\melodicMinor", content)
 			elif chord.GetQuality() == "dim7":
 				content = re.sub(r"chordForm1", r"c ef gf a", content)
 				content = re.sub(r"chordForm2", r"c ef gf b", content)
+				content = re.sub(r"\\key c \\major", r"\\key %s \\major" % (chord.GetLyPitch()), content)
 			else:
 				# TODO: Other qualities not yet implemented...
 				content = re.sub(r"chordForm1", r"c e g", content)
@@ -870,7 +923,9 @@ upper = \\relative c' {
   %\\midi { }
 }
 '''
-		if chord.GetScaleKind() == 'Major' or chord.GetScaleKind() == 'Diminished':
+		if chord.GetScaleKind() == 'Major' or \
+		chord.GetScaleKind() == 'Minor' or \
+		chord.GetScaleKind() == 'Diminished':
 			lyfile = chord.GetLyScaleName(self.scoreRes)
 			content = basisHeader + \
 			basisUpperBeginning + \
@@ -879,6 +934,8 @@ upper = \\relative c' {
 			basisFooter
 			if chord.GetScaleKind() == 'Major':
 				content = re.sub(r"scaleDefinition", r"c d e f g a b c", content)
+			elif chord.GetScaleKind() == 'Minor':
+				content = re.sub(r"scaleDefinition", r"c d ef f g a b c", content)
 			elif chord.GetScaleKind() == 'Diminished':
 				content = re.sub(r"scaleDefinition", r"c d ef f gf af a b c", content)
 		else:
@@ -1064,6 +1121,19 @@ upper = \\relative c' {
 			self.Bind(wx.EVT_MENU, self.MenuSetQualities, id=self.qualitiesMenuId[quality])
 			self.qualitiesMenu.Enable(self.qualitiesMenuId[quality], self.modes['Chord'])
 				
+		self.qualitiesMenu.AppendSeparator()
+		self.qualitiesFuncId = {\
+						"maj" : wx.NewId(),\
+						"min" : wx.NewId(),\
+						"dim" : wx.NewId()\
+						}
+		self.qualitiesMenu.Append(self.qualitiesFuncId["maj"], "Major")
+		self.Bind(wx.EVT_MENU, self.MenuSetQualities, id=self.qualitiesFuncId["maj"])
+		self.qualitiesMenu.Append(self.qualitiesFuncId["min"], "Minor")
+		self.Bind(wx.EVT_MENU, self.MenuSetQualities, id=self.qualitiesFuncId["min"])
+		self.qualitiesMenu.Append(self.qualitiesFuncId["dim"], "Diminished")
+		self.Bind(wx.EVT_MENU, self.MenuSetQualities, id=self.qualitiesFuncId["dim"])
+					
 		menubar.Append(self.qualitiesMenu, '&Qualities')
 			
 		# Menu: DURATION
@@ -1373,8 +1443,34 @@ upper = \\relative c' {
 		self.changedParameters = True
 
 	def MenuSetQualities(self, evt):
-		quality = self.qualitiesMenuIdRev[evt.GetId()]
-		self.qualities[quality] = evt.IsChecked()
+		if evt.GetId() == self.qualitiesFuncId["maj"]:
+			for quality in self.qualities.keys():
+				if quality == "Maj7" or \
+				quality == "7" or \
+				quality == "min7":
+					self.qualities[quality] = True
+				else:
+					self.qualities[quality] = False
+				self.qualitiesMenu.Check(self.qualitiesMenuId[quality], self.qualities[quality])
+		elif evt.GetId() == self.qualitiesFuncId["min"]:
+			for quality in self.qualities.keys():
+				if quality == "minMaj7" or \
+				quality == "alt" or \
+				quality == "min7b5":
+					self.qualities[quality] = True
+				else:
+					self.qualities[quality] = False
+				self.qualitiesMenu.Check(self.qualitiesMenuId[quality], self.qualities[quality])
+		elif evt.GetId() == self.qualitiesFuncId["dim"]:
+			for quality in self.qualities.keys():
+				if quality == "dim7":
+					self.qualities[quality] = True
+				else:
+					self.qualities[quality] = False
+				self.qualitiesMenu.Check(self.qualitiesMenuId[quality], self.qualities[quality])
+		else:
+			quality = self.qualitiesMenuIdRev[evt.GetId()]
+			self.qualities[quality] = evt.IsChecked()
 		# Mark the current parameters as new, so as to renew the chord stack 
 		self.changedParameters = True
 
