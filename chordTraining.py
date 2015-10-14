@@ -212,6 +212,13 @@ class Chord:
 				index = self.pitches.index(self.pitch) % 3
 				self.scalePitch = self.pitches[index]
 				self.scaleKind = "Diminished"
+			elif (self.quality == '7b9'):
+				indexPitch = self.pitches.index(self.pitch) + 2
+				if indexPitch >= len(self.pitches): 
+					indexPitch -= len(self.pitches)
+				indexPitch = indexPitch % 3
+				self.scalePitch = self.pitches[indexPitch]
+				self.scaleKind = "Diminished"
 
 			self.scale = self.scalePitch + " " + self.scaleKind
 		elif self.mode == 'II-V-I' or self.mode == 'II-V' or self.mode == 'V-I':
@@ -360,11 +367,12 @@ class ChordTraining(wx.Frame):
 		self.qualities['minMaj7'] = False
 		self.qualities['alt'] = False
 		self.qualities['min7b5'] = False
-		self.qualities['min'] = False
-		self.qualities['Maj'] = False
-		self.qualities['7sus4'] = False
 		self.qualities['dim7'] = False
-		self.qualities['aug'] = False
+		self.qualities['7b9'] = False
+		#self.qualities['min'] = False
+		#self.qualities['Maj'] = False
+		#self.qualities['7sus4'] = False
+		#self.qualities['aug'] = False
 
 		self.modes = collections.OrderedDict()
 		self.modes['Chord'] = True
@@ -856,6 +864,10 @@ lower = \\relative c {
 			elif chord.GetQuality() == "dim7":
 				content = re.sub(r"chordForm1", r"c ef gf a", content)
 				content = re.sub(r"chordForm2", r"c ef gf b", content)
+				content = re.sub(r"\\key c \\major", r"\\key %s \\major" % (chord.GetLyPitch()), content)
+			elif chord.GetQuality() == "7b9":
+				content = re.sub(r"chordForm1", r"e a bf df", content)
+				content = re.sub(r"chordForm2", r"bf df e a", content)
 				content = re.sub(r"\\key c \\major", r"\\key %s \\major" % (chord.GetLyPitch()), content)
 			else:
 				# TODO: Other qualities not yet implemented...
@@ -1463,7 +1475,8 @@ upper = \\relative c' {
 				self.qualitiesMenu.Check(self.qualitiesMenuId[quality], self.qualities[quality])
 		elif evt.GetId() == self.qualitiesFuncId["dim"]:
 			for quality in self.qualities.keys():
-				if quality == "dim7":
+				if quality == "dim7" or \
+				quality == "7b9":
 					self.qualities[quality] = True
 				else:
 					self.qualities[quality] = False
