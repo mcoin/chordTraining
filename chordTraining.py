@@ -66,6 +66,46 @@ class NoImage(Exception):
 	def __init__(self):
 	    pass
 
+class Conversion:
+	def __init__(self):
+		# Quality names for output in the GUI
+		self.qualityNames = {}
+		self.qualityNames['min7'] = "-7"
+		self.qualityNames['7'] = "7"
+		self.qualityNames['Maj7'] = u'\u25B3'
+		self.qualityNames['minMaj7'] = u'-\u25B3'
+		self.qualityNames['alt'] = "alt"
+		self.qualityNames['min7b5'] = u'\u2300' #u'\u00F8'
+		self.qualityNames['dim7'] = "dim"
+		self.qualityNames['7b9'] = u'7\u266D9'
+
+		# Pitch names for output in the GUI
+		self.pitchNames = {}
+		self.pitchNames['C'] = "C "
+		self.pitchNames['F'] = "F "
+		self.pitchNames['Bb'] = u'B\u266D' 
+		self.pitchNames['Eb'] = u'E\u266D' 
+		self.pitchNames['Ab'] = u'A\u266D' 
+		self.pitchNames['Db'] = u'D\u266D' 
+		self.pitchNames['F#'] = u'F\u266F' 
+		self.pitchNames['B'] = "B "
+		self.pitchNames['E'] = "E "
+		self.pitchNames['A'] = "A "
+		self.pitchNames['D'] = "D "
+		self.pitchNames['G'] = "G "
+
+	def GetQualityName(self, quality):
+		if quality not in self.qualityNames:
+			return quality
+		
+		return self.qualityNames[quality]
+
+	def GetPitchName(self, pitch):
+		if pitch not in self.pitchNames:
+			return pitch
+		
+		return self.pitchNames[pitch]
+
 class Chord:
 	def __init__(self, pitch = '-', quality = '-', mode = '-'):
 		self.pitch = pitch
@@ -80,6 +120,8 @@ class Chord:
 		self.scaleKind = None
 		self.scaleFileName = None
 		self.updateScale = True
+		
+		self.conv = Conversion()
 		
 	def SetPitch(self, pitch):
 		self.pitch = pitch
@@ -141,7 +183,7 @@ class Chord:
 
 	def GetName(self):
 		if self.mode == 'Chord':
-			self.name = self.pitch + " " + self.quality
+			self.name = self.conv.GetPitchName(self.pitch) + self.conv.GetQualityName(self.quality)
 		elif self.mode == 'II-V-I' or self.mode == 'II-V' or self.mode == 'V-I':
 			try:
 				indexPitch = self.pitches.index(self.pitch)
@@ -152,13 +194,13 @@ class Chord:
 			if self.mode == 'II-V-I' or self.mode == 'II-V':
 				indexIIpitch = indexPitch - 2
 				IIpitch = self.pitches[indexIIpitch]
-				progression += IIpitch + ' min7' + '\n'
+				progression += self.conv.GetPitchName(IIpitch) + self.conv.GetQualityName('min7') + '\n'
 			
 			indexVpitch = indexPitch - 1
 			Vpitch = self.pitches[indexVpitch]	
-			progression += Vpitch + ' 7'
+			progression += self.conv.GetPitchName(Vpitch) + self.conv.GetQualityName('7')
 			if self.mode != 'II-V':
-				progression += '\n' + self.pitch + ' Maj7'
+				progression += '\n' + self.conv.GetPitchName(self.pitch) + self.conv.GetQualityName('Maj7')
 			
 			self.name = progression
 		else:
@@ -230,7 +272,7 @@ class Chord:
 
 	def GetScale(self):
 		self.DetermineScale()			
-		return self.scalePitch + " " + self.scaleKind
+		return self.conv.GetPitchName(self.scalePitch) + " " + self.scaleKind
 
 	def GetBaseFileName(self):
 		if self.mode == 'Chord':
@@ -373,13 +415,15 @@ class ChordTraining(wx.Frame):
 		#self.qualities['Maj'] = False
 		#self.qualities['7sus4'] = False
 		#self.qualities['aug'] = False
-
+		
 		self.modes = collections.OrderedDict()
 		self.modes['Chord'] = True
 		self.modes['II-V-I'] = False
 		self.modes['II-V'] = False
 		self.modes['V-I'] = False
 
+		self.conv = Conversion()
+		
 		self.duration = 5  # s
 		self.durationMin = 1  # s
 		self.durationMax = 10  # s
@@ -854,8 +898,8 @@ lower = \\relative c {
 				chord.GetPitch() == 'Eb' or \
 				chord.GetPitch() == 'Ab':
 					# Avoid very weird key signatures for certain pitches
-					content = re.sub(r"chordForm1", r"ds fs as d", content)
-					content = re.sub(r"chordForm2", r"as d ds fs", content)
+					content = re.sub(r"chordForm1", r"ds fs as css", content)
+					content = re.sub(r"chordForm2", r"as css ds fs", content)
 					content = re.sub(r"\\key c \\major", r"\\key ds \\melodicMinor", content)
 				else:
 					content = re.sub(r"chordForm1", r"ef gf bf d", content)
@@ -1128,7 +1172,7 @@ upper = \\relative c' {
 		for quality in self.qualities.keys():
 			self.qualitiesMenuId[quality] = wx.NewId()
 			self.qualitiesMenuIdRev[self.qualitiesMenuId[quality]] = quality
-			self.qualitiesMenu.Append(self.qualitiesMenuId[quality], quality, "", wx.ITEM_CHECK)
+			self.qualitiesMenu.Append(self.qualitiesMenuId[quality], self.conv.GetQualityName(quality), "", wx.ITEM_CHECK)
 			self.qualitiesMenu.Check(self.qualitiesMenuId[quality], self.qualities[quality])
 			self.Bind(wx.EVT_MENU, self.MenuSetQualities, id=self.qualitiesMenuId[quality])
 			self.qualitiesMenu.Enable(self.qualitiesMenuId[quality], self.modes['Chord'])
