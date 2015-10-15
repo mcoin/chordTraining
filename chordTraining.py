@@ -261,8 +261,15 @@ class Chord:
 				indexPitch = indexPitch % 3
 				self.scalePitch = self.pitches[indexPitch]
 				self.scaleKind = "Diminished"
+			else:
+				self.scaleKind = "-"
+				self.scalePitch = self.pitch if self.pitch is not None else "-"
 
-			self.scale = self.scalePitch + " " + self.scaleKind
+			if self.scalePitch is None or self.scaleKind is None:
+				self.scale = "-"
+			else:
+				self.scale = self.scalePitch + " " + self.scaleKind
+				
 		elif self.mode == 'II-V-I' or self.mode == 'II-V' or self.mode == 'V-I':
 			self.scalePitch = self.pitch
 			self.scaleKind = "Major"
