@@ -915,11 +915,11 @@ lower = \\relative c {
 			elif chord.GetQuality() == "dim7":
 				content = re.sub(r"chordForm1", r"c ef gf a", content)
 				content = re.sub(r"chordForm2", r"c ef gf b", content)
-				content = re.sub(r"\\key c \\major", r"\\key %s \\major" % (chord.GetLyPitch()), content)
+				content = re.sub(r"\\key c \\major", r"\\key %s \\major" % (chord.GetLyPitch().lower()), content)
 			elif chord.GetQuality() == "7b9":
 				content = re.sub(r"chordForm1", r"e a bf df", content)
 				content = re.sub(r"chordForm2", r"bf df e a", content)
-				content = re.sub(r"\\key c \\major", r"\\key %s \\major" % (chord.GetLyPitch()), content)
+				content = re.sub(r"\\key c \\major", r"\\key %s \\major" % (chord.GetLyPitch().lower()), content)
 			else:
 				# TODO: Other qualities not yet implemented...
 				content = re.sub(r"chordForm1", r"c e g", content)
