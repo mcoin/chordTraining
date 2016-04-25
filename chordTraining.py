@@ -388,187 +388,57 @@ class ChordStack():
 		else:
 			return self.dummy
 				
-class ChordTraining(wx.Frame):
+class Settings():
+	def __init__(self, chordTraining):
+		self.chordTraining = chordTraining
 
-	def __init__(self, *args, **kwargs):
-		super(ChordTraining, self).__init__(*args, **kwargs) 
-
-		# Default settings (overridden by settings from file ~/.chord_training/settings, if it exists)
-		# self.pitches = {'C': 1, 'F': 1, 'Bb': 1, 'Eb': 1, 'Ab': 1, 'Db': 1, 'F#': 1, 'B': 1, 'E': 0, 'A': 0, 'D': 0, 'G': 0}
-		self.pitches = collections.OrderedDict()
-		self.pitches['C'] = True
-		self.pitches['F'] = True
-		self.pitches['Bb'] = True
-		self.pitches['Eb'] = True
-		self.pitches['Ab'] = True
-		self.pitches['Db'] = True
-		self.pitches['F#'] = True
-		self.pitches['B'] = False
-		self.pitches['E'] = False
-		self.pitches['A'] = False
-		self.pitches['D'] = False
-		self.pitches['G'] = False
-		# self.qualities = {'min7': 1, '7': 1, 'Maj7': 1}
-		self.qualities = collections.OrderedDict()
-		self.qualities['min7'] = True
-		self.qualities['7'] = True
-		self.qualities['Maj7'] = True
-		self.qualities['minMaj7'] = False
-		self.qualities['alt'] = False
-		self.qualities['min7b5'] = False
-		self.qualities['dim7'] = False
-		self.qualities['7b9'] = False
-		#self.qualities['min'] = False
-		#self.qualities['Maj'] = False
-		#self.qualities['7sus4'] = False
-		#self.qualities['aug'] = False
+	def SaveSettings(self, event = None, savefile = None):
+		# Use the default (autosave) file if none explicitly given
+		if (savefile is None):
+			savefile = self.chordTraining.savefile
 		
-		self.modes = collections.OrderedDict()
-		self.modes['Chord'] = True
-		self.modes['II-V-I'] = False
-		self.modes['II-V'] = False
-		self.modes['V-I'] = False
-
-		self.conv = Conversion()
-		
-		self.duration = 5  # s
-		self.durationMin = 1  # s
-		self.durationMax = 10  # s
-		self.elapsedTime = 0  # ms
-		self.refreshPeriod = 50  # ms
-
-		#  Display chord/scale score by default
-		self.displayScore = True
-		self.displayScale = True
-		# Default image in case no proper chord is selected or when the score 
-		# is inactive
-		self.defaultImage = wx.EmptyImage(5, 5).ConvertToBitmap()
-		# Resolution for the score images
-		self.scoreRes = 150
-		
-		self.hSpacerLength = 50
-		self.vSpacerLength = 25
-		
-		# Default window size
-		self.windowSizeX = 500
-		self.windowSizeY = 400
-		
-		# Use only one thread on slower machines 
-		# when generating scores using lilypond
-		self.singleThread = True
-
-		# Default font size for chord names
-		self.fontSize = 64
-		self.fontSizes = collections.OrderedDict()
-		self.fontSizes['24'] = False
-		self.fontSizes['36'] = False
-		self.fontSizes['48'] = False
-		self.fontSizes['64'] = True
-		self.fontSizes['72'] = False
-		self.fontSizes['96'] = False
-		self.fontSizes['128'] = False
-		self.fontSizes['144'] = False
-		self.fontSizeMin = int(self.fontSizes.keys()[0])
-		self.fontSizeMax = int(self.fontSizes.keys()[-1])
-		
-		# Default resolution for scores
-		self.scoreRes = 150
-		self.scoreRess = collections.OrderedDict()
-		self.scoreRess['100'] = False
-		self.scoreRess['150'] = True
-		self.scoreRess['200'] = False
-		self.scoreRess['300'] = False
-		self.scoreResMin = int(self.scoreRess.keys()[0])
-		self.scoreResMax = int(self.scoreRess.keys()[-1])
-		
-		# Path to file where the settings are saved		
-		home = expanduser("~")
-		self.directory = os.path.join(home, ".chord_training")
-		# Create directory in case it doesn't exist
-		if not os.path.isdir(self.directory):
-			os.makedirs(self.directory)
-		self.savefile = os.path.join(self.directory, "settings")	
-
-		# Trick the system to disable screen savers during training
-		self.moveMouse = True
-		
-		# Prevent the screensaver from starting
-		self.stayOn = StayOn()
-		
-		# Set pause to off
-		self.pause = False  
-		
-		# Attempt to read other settings from the savefile, in case it exists
-		self.LoadSettings()
-		
-		# Override setting in case the feature is unavailable
-		if not self.stayOn.isEnabled():
-			self.moveMouse = False
-		
-		self.SetChord()
-		
-		# Set up the menus
-		self.InitMenus()
-		
-		# Set up the layout
-		self.InitUI()
-		
-		# Set up the timer to refresh the display
-		self.SetTimer()
-
-		# Define keyboard shortcuts
-		self.KeyBindings()
-
-		# Set elapsed time so that the layout is refreshed immediately at the start of the program
-		self.elapsedTime = self.duration * 1000
-		self.changedLayout = True
-		
-		# Indicators for new parameters (when True leads to a renewal of the upcoming chords in the stack)
-		self.changedParameters = False
-		
-		self.Centre()
-		self.Show(True)
-		
-	def SaveSettings(self, event=None):
-		
-		f = open(self.savefile, "w")
+		f = open(savefile, "w")
 		
 		f.write("#Chord Training settings\n")
 		f.write("Tones:\n")
-		for tone in self.pitches.keys():
-			f.write("\t%s\t%s\n" % (tone, self.pitches[tone]))
+		for tone in self.chordTraining.pitches.keys():
+			f.write("\t%s\t%s\n" % (tone, self.chordTraining.pitches[tone]))
 		f.write("Qualities:\n")
-		for quality in self.qualities.keys():
-			f.write("\t%s\t%s\n" % (quality, self.qualities[quality]))
+		for quality in self.chordTraining.qualities.keys():
+			f.write("\t%s\t%s\n" % (quality, self.chordTraining.qualities[quality]))
 		f.write("Mode:\n")
-		for mode in self.modes.keys():
-			if self.modes[mode]:
+		for mode in self.chordTraining.modes.keys():
+			if self.chordTraining.modes[mode]:
 				f.write("\t%s\n" % mode)
 		f.write("Duration:\n")
-		f.write("%d\n" % self.duration)
+		f.write("%d\n" % self.chordTraining.duration)
 		f.write("WindowSize:\n")
-		size = self.GetSize()
+		size = self.chordTraining.GetSize()
 		f.write("\t%d\t%d\n" % (size.x, size.y))
 		f.write("FontSize:\n")
-		f.write("\t%d\n" % self.fontSize)
+		f.write("\t%d\n" % self.chordTraining.fontSize)
 		f.write("ScoreResolution:\n")
-		f.write("\t%d\n" % self.scoreRes)
+		f.write("\t%d\n" % self.chordTraining.scoreRes)
 		f.write("SingleThread:\n")
-		f.write("\t%r\n" % self.singleThread)
+		f.write("\t%r\n" % self.chordTraining.singleThread)
 		f.write("DisplayScore:\n")
-		f.write("\t%s\n" % self.displayScore)
+		f.write("\t%s\n" % self.chordTraining.displayScore)
 		f.write("DisplayScale:\n")
-		f.write("\t%s\n" % self.displayScale)
+		f.write("\t%s\n" % self.chordTraining.displayScale)
 		f.write("StayOn:\n")
-		f.write("\t%s\n" % self.moveMouse)
+		f.write("\t%s\n" % self.chordTraining.moveMouse)
 								
 		f.close()
 
 
-	def LoadSettings(self):
+	def LoadSettings(self, event = None, savefile = None):
 		try:
 			context = None
-			with open(self.savefile) as f:
+			# Use the default (autosave) file if none explicitly given
+			if (savefile is None):
+				savefile = self.chordTraining.savefile
+			
+			with open(savefile) as f:
 				for line in f:
 					line = line.rstrip()
 					match = re.match(r"^\s*#", line)
@@ -586,171 +456,151 @@ class ChordTraining(wx.Frame):
 							state = items[1].lower() == 'true'
 						except:
 							state = False
-						self.pitches[tone] = state
+						if tone in self.chordTraining.pitches.keys():
+							self.chordTraining.pitches[tone] = state
 					elif context == "Qualities":
 						quality = items[0]
 						try:
 							state = items[1].lower() == 'true'
 						except:
 							state = False
-						self.qualities[quality] = state		      
+						if quality in self.chordTraining.qualities.keys():
+							self.chordTraining.qualities[quality] = state		      
 					elif context == "Mode":
 						mode = items[0]
-						for modeTest in self.modes.keys():
+						for modeTest in self.chordTraining.modes.keys():
 							if mode == modeTest:
-								self.modes[modeTest] = True
+								self.chordTraining.modes[modeTest] = True
 							else:
-								self.modes[modeTest] = False
+								self.chordTraining.modes[modeTest] = False
 					elif context == "Duration":
 						duration = int(items[0])
-						self.duration = duration
+						self.chordTraining.duration = duration
 					elif context == "WindowSize":
-						self.windowSizeX = int(items[0])
-						self.windowSizeY = int(items[1])
+						self.chordTraining.windowSizeX = int(items[0])
+						self.chordTraining.windowSizeY = int(items[1])
 					elif context == "FontSize":
-						self.fontSize = int(items[0])
-						for fontSize in self.fontSizes.keys():
-							if int(fontSize) == self.fontSize:
-								self.fontSizes[fontSize] = True
+						self.chordTraining.fontSize = int(items[0])
+						for fontSize in self.chordTraining.fontSizes.keys():
+							if int(fontSize) == self.chordTraining.fontSize:
+								self.chordTraining.fontSizes[fontSize] = True
 							else:
-								self.fontSizes[fontSize] = False
+								self.chordTraining.fontSizes[fontSize] = False
 					elif context == "ScoreResolution":
-						self.scoreRes = int(items[0])
-						for scoreRes in self.scoreRess.keys():
-							if int(scoreRes) == self.scoreRes:
-								self.scoreRess[scoreRes] = True
+						self.chordTraining.scoreRes = int(items[0])
+						for scoreRes in self.chordTraining.scoreRess.keys():
+							if int(scoreRes) == self.chordTraining.scoreRes:
+								self.chordTraining.scoreRess[scoreRes] = True
 							else:
-								self.scoreRess[scoreRes] = False
+								self.chordTraining.scoreRess[scoreRes] = False
 					elif context == "SingleThread":
 						if items[0].lower() == 'false':
-							self.singleThread = False
+							self.chordTraining.singleThread = False
 						else:
-							self.singleThread = True
+							self.chordTraining.singleThread = True
 					elif context == "DisplayScore":
 						if items[0].lower() == 'false':
-							self.displayScore = False
+							self.chordTraining.displayScore = False
 						else:
-							self.displayScore = True
+							self.chordTraining.displayScore = True
 					elif context == "DisplayScale":
 						if items[0].lower() == 'false':
-							self.displayScale = False
+							self.chordTraining.displayScale = False
 						else:
-							self.displayScale = True
+							self.chordTraining.displayScale = True
 					elif context == "StayOn":
 						if items[0].lower() == 'false':
-							self.moveMouse = False
+							self.chordTraining.moveMouse = False
 						else:
-							self.moveMouse = True								
+							self.chordTraining.moveMouse = True								
 		except:
 			pass
 
 		# Check that the data read makes sense
 		# There should be only one mode selected
 		nbModes = 0
-		for mode in self.modes.keys():
-			if self.modes[mode]:
+		for mode in self.chordTraining.modes.keys():
+			if self.chordTraining.modes[mode]:
 				nbModes += 1
 		if nbModes != 1:
 			first = True
-			for mode in self.modes:
+			for mode in self.chordTraining.modes:
 				if first:
-					self.modes[mode] = True
+					self.chordTraining.modes[mode] = True
 				else:
-					self.modes[mode] = False
+					self.chordTraining.modes[mode] = False
 				first = False
 				
 		# The duration should be an integer value between durationMin and durationMax
-		if (self.duration < self.durationMin or self.duration > self.durationMax):
-			self.duration = int((self.durationMax - self.durationMin) / 2 + 1)
+		if (self.chordTraining.duration < self.chordTraining.durationMin or self.chordTraining.duration > self.chordTraining.durationMax):
+			self.chordTraining.duration = int((self.chordTraining.durationMax - self.chordTraining.durationMin) / 2 + 1)
 			
 		# Check that the given font size is legal
 		nbFontSizes = 0
-		for fontSize in self.fontSizes.keys():
-			if self.fontSizes[fontSize]:
+		for fontSize in self.chordTraining.fontSizes.keys():
+			if self.chordTraining.fontSizes[fontSize]:
 				nbFontSizes += 1
 		if nbFontSizes != 1:
 			first = True
-			for fontSize in self.fontSizes.keys():
+			for fontSize in self.chordTraining.fontSizes.keys():
 				if first:
-					self.fontSizes[fontSize] = True
-					self.fontSize = int(fontSize)
+					self.chordTraining.fontSizes[fontSize] = True
+					self.chordTraining.fontSize = int(fontSize)
 					first = False
 				else:
-					self.fontSizes[fontSize] = False
+					self.chordTraining.fontSizes[fontSize] = False
 
 		# Check that the given score resolution is legal
 		nbScoreRess = 0
-		for scoreRes in self.scoreRess.keys():
-			if self.scoreRess[scoreRes]:
+		for scoreRes in self.chordTraining.scoreRess.keys():
+			if self.chordTraining.scoreRess[scoreRes]:
 				nbScoreRess += 1
 		if nbScoreRess != 1:
 			first = True
-			for scoreRes in self.scoreRess.keys():
+			for scoreRes in self.chordTraining.scoreRess.keys():
 				if first:
-					self.scoreRess[scoreRes] = True
-					self.scoreRes = int(scoreRes)
+					self.chordTraining.scoreRess[scoreRes] = True
+					self.chordTraining.scoreRes = int(scoreRes)
 					first = False
 				else:
-					self.scoreRess[scoreRes] = False
-	
-	def UpdateFontSize(self):
-		if self.fontSize != self.fontSizeOld:
-			self.font = wx.Font(self.fontSize, wx.SWISS, wx.NORMAL, wx.NORMAL)
-			self.chordDisplay.SetFont(self.font)
-			
-			self.fontSmaller = wx.Font(self.getSmallerFontsize(self.fontSize), wx.SWISS, wx.NORMAL, wx.NORMAL)
-			self.chordDisplayPrev.SetFont(self.fontSmaller)
-			self.chordDisplayNext.SetFont(self.fontSmaller)
-
-			self.fontStatus = wx.Font(self.getSmallerFontsize(self.fontSize), wx.SWISS, wx.NORMAL, wx.NORMAL)
-			
-			self.scaleNameTitle.SetFont(self.fontSmaller)
-			self.scaleName.SetFont(self.font)
-			self.status.SetFont(self.fontStatus)
-
-			self.fontSizeOld = self.fontSize
-# 			self.changedLayout = True
-			
-	def PrepareImage(self, currChord, imageMode):
-		try:
-			# Set the image for the score
-			if imageMode == "Chord" and not self.displayScore:
-				raise NoImage
-			elif imageMode == "Scale" and not self.displayScale:
-				raise NoImage
-			else:
-				try:
-					if imageMode == "Chord":
-						imageFile = currChord.GetImgName(self.scoreRes)
-					elif imageMode == "Scale":
-						imageFile = currChord.GetScaleImgName(self.scoreRes)
-					else:
-						raise
-				except:
-					raise NoImage
-			imageFile = os.path.join(self.directory, imageFile)
-			try:
-				with open(imageFile): pass
-				png = wx.Image(imageFile, wx.BITMAP_TYPE_ANY).ConvertToBitmap()
-			except IOError:
-				raise NoImage
-
-		except NoImage:
-			png = self.defaultImage
-			# Only attempt to generate the score if: 
-			# - there is a proper chord
-			# - the score is enabled
-			if imageMode == "Chord" and currChord.GetPitch() != "-" and self.displayScore:
-				self.GenerateImage(currChord)
-			elif imageMode == "Scale" and currChord.GetPitch() != "-" and self.displayScale:
-				self.GenerateScaleImage(currChord)
-				
-		if imageMode == "Chord":		
-			self.chordImage.SetBitmap(png)
-		elif imageMode == "Scale":		
-			self.scaleImage.SetBitmap(png)
+					self.chordTraining.scoreRess[scoreRes] = False
 					
-	def GenerateImage(self, chord):
+		# Synchronize the menus to the data we just read
+		for tone in self.chordTraining.pitches.keys():
+			self.chordTraining.tonesMenu.Check(self.chordTraining.tonesMenuId[tone], self.chordTraining.pitches[tone])
+
+		for mode in self.chordTraining.modes.keys():
+			self.chordTraining.modeMenu.Check(self.chordTraining.modeMenuId[mode], self.chordTraining.modes[mode])
+			
+		for quality in self.chordTraining.qualities.keys():
+			self.chordTraining.qualitiesMenu.Check(self.chordTraining.qualitiesMenuId[quality], self.chordTraining.qualities[quality])
+
+		try:
+			self.chordTraining.durationMenu.Check(self.chordTraining.durationMenuId[self.chordTraining.duration], True)
+		except:
+			pass
+				
+		try:
+			self.chordTraining.fontSizeMenu.Check(self.chordTraining.fontSizeMenuId[str(self.chordTraining.fontSize)], True)
+		except:
+			pass
+
+		try:
+			self.chordTraining.scoreResMenu.Check(self.chordTraining.scoreResMenuId[str(self.chordTraining.scoreRes)], True)
+		except:
+			pass
+		
+		self.chordTraining.settingsMenu.Check(self.chordTraining.singleThreadId, self.chordTraining.singleThread)
+		self.chordTraining.settingsMenu.Check(self.chordTraining.displayScoreId, self.chordTraining.displayScore)
+		self.chordTraining.settingsMenu.Check(self.chordTraining.displayScaleId, self.chordTraining.displayScale)
+		self.chordTraining.settingsMenu.Check(self.chordTraining.stayOnId, self.chordTraining.moveMouse)
+
+
+class Score:
+	def __init__(self, directory):
+		self.directory = directory
+		
+	def GenerateImage(self, chord, scoreRes):
 		basisHeader = '''
 #(set-default-paper-size "a4")
 
@@ -823,7 +673,7 @@ lower = \\relative c {
 }
 '''
 		if chord.GetMode() == 'Chord':
-			lyfile = chord.GetLyName(self.scoreRes)
+			lyfile = chord.GetLyName(scoreRes)
 			content = basisHeader + \
 			basisUpperBeginning + \
 			basisUpperContentChord + \
@@ -833,7 +683,7 @@ lower = \\relative c {
 			basisLowerEnd + \
 			basisFooter
 		elif chord.GetMode() == 'II-V-I':
-			lyfile = chord.GetLyName(self.scoreRes)
+			lyfile = chord.GetLyName(scoreRes)
 			content = basisHeader + \
 			basisUpperBeginning + \
 			basisContentII_V_I + \
@@ -843,7 +693,7 @@ lower = \\relative c {
 			basisLowerEnd + \
 			basisFooter
 		elif chord.GetMode() == 'II-V':
-			lyfile = chord.GetLyName(self.scoreRes)
+			lyfile = chord.GetLyName(scoreRes)
 			content = basisHeader + \
 			basisUpperBeginning + \
 			basisContentII_V + \
@@ -853,7 +703,7 @@ lower = \\relative c {
 			basisLowerEnd + \
 			basisFooter
 		elif chord.GetMode() == 'V-I':
-			lyfile = chord.GetLyName(self.scoreRes)
+			lyfile = chord.GetLyName(scoreRes)
 			content = basisHeader + \
 			basisUpperBeginning + \
 			basisContentV_I + \
@@ -952,9 +802,9 @@ lower = \\relative c {
 		f.write(content)
 		f.close()
 
-		self.CallLilypond(lyfile)
+		self.CallLilypond(lyfile, scoreRes)
 		
-	def GenerateScaleImage(self, chord):
+	def GenerateScaleImage(self, chord, scoreRes):
 		basisHeader = '''
 #(set-default-paper-size "a4")
 
@@ -989,7 +839,7 @@ upper = \\relative c' {
 		if chord.GetScaleKind() == 'Major' or \
 		chord.GetScaleKind() == 'Minor' or \
 		chord.GetScaleKind() == 'Diminished':
-			lyfile = chord.GetLyScaleName(self.scoreRes)
+			lyfile = chord.GetLyScaleName(scoreRes)
 			content = basisHeader + \
 			basisUpperBeginning + \
 			basisUpperContentMajorScale + \
@@ -1014,9 +864,9 @@ upper = \\relative c' {
 		f.write(content)
 		f.close()
 
-		self.CallLilypond(lyfile)
+		self.CallLilypond(lyfile, scoreRes)
 		
-	def CallLilypond(self, lyfile):
+	def CallLilypond(self, lyfile, scoreRes):
 		try:
 			catOutputFile = os.path.join(self.directory, "cat_outputFile")
 			f = open(catOutputFile, "w")
@@ -1028,7 +878,7 @@ upper = \\relative c' {
 			# The lilypond call apparently won't work properly without an explicit stdout redirection...
 			lilypondOutputFile = os.path.join(self.directory, "lilypond_outputFile")
 			f = open(lilypondOutputFile, "w")			
-			proc = Popen(["lilypond", "--png", "-dresolution=" + str(self.scoreRes), "-dpreview", lyfile], stdout=f, cwd=self.directory)
+			proc = Popen(["lilypond", "--png", "-dresolution=" + str(scoreRes), "-dpreview", lyfile], stdout=f, cwd=self.directory)
 			# Do not continue after starting the lilypond process
 			# (useful on slower machines, e.g. raspberryPi 
 			if self.singleThread:
@@ -1038,6 +888,230 @@ upper = \\relative c' {
 			print "rc = %s" % rc
 		except:
 			print "Call to lilypond failed."
+					
+		
+					
+class ChordTraining(wx.Frame):
+
+	def __init__(self, *args, **kwargs):
+		super(ChordTraining, self).__init__(*args, **kwargs) 
+
+		# Default settings (overridden by settings from file ~/.chord_training/settings, if it exists)
+		self.pitches = collections.OrderedDict()
+		self.pitches['C'] = True
+		self.pitches['F'] = True
+		self.pitches['Bb'] = True
+		self.pitches['Eb'] = True
+		self.pitches['Ab'] = True
+		self.pitches['Db'] = True
+		self.pitches['F#'] = True
+		self.pitches['B'] = True
+		self.pitches['E'] = True
+		self.pitches['A'] = True
+		self.pitches['D'] = True
+		self.pitches['G'] = True
+		
+		self.qualities = collections.OrderedDict()
+		self.qualities['min7'] = True
+		self.qualities['7'] = True
+		self.qualities['Maj7'] = True
+		self.qualities['minMaj7'] = False
+		self.qualities['alt'] = False
+		self.qualities['min7b5'] = False
+		self.qualities['dim7'] = False
+		self.qualities['7b9'] = False
+		#self.qualities['min'] = False
+		#self.qualities['Maj'] = False
+		#self.qualities['7sus4'] = False
+		#self.qualities['aug'] = False
+		
+		self.modes = collections.OrderedDict()
+		self.modes['Chord'] = True
+		self.modes['II-V-I'] = False
+		self.modes['II-V'] = False
+		self.modes['V-I'] = False
+
+		self.conv = Conversion()
+		
+		self.durationMin = 1  # s
+		self.durationMax = 10  # s
+		self.duration = 5  # s
+		self.elapsedTime = 0  # ms
+		self.refreshPeriod = 50  # ms
+
+		#  Display chord/scale score by default
+		self.displayScore = True
+		self.displayScale = True
+		# Default image in case no proper chord is selected or when the score 
+		# is inactive
+		self.defaultImage = wx.EmptyImage(5, 5).ConvertToBitmap()
+		# Resolution for the score images
+		self.scoreRes = 150
+		
+		self.hSpacerLength = 50
+		self.vSpacerLength = 25
+		
+		# Default window size
+		self.windowSizeX = 500
+		self.windowSizeY = 400
+		
+		# Use only one thread on slower machines 
+		# when generating scores using lilypond
+		self.singleThread = True
+
+		# Default font size for chord names
+		self.fontSize = 64
+		self.fontSizes = collections.OrderedDict()
+		self.fontSizes['24'] = False
+		self.fontSizes['36'] = False
+		self.fontSizes['48'] = False
+		self.fontSizes['64'] = True
+		self.fontSizes['72'] = False
+		self.fontSizes['96'] = False
+		self.fontSizes['128'] = False
+		self.fontSizes['144'] = False
+		self.fontSizeMin = int(self.fontSizes.keys()[0])
+		self.fontSizeMax = int(self.fontSizes.keys()[-1])
+		
+		# Default resolution for scores
+		self.scoreRes = 150
+		self.scoreRess = collections.OrderedDict()
+		self.scoreRess['100'] = False
+		self.scoreRess['150'] = True
+		self.scoreRess['200'] = False
+		self.scoreRess['300'] = False
+		self.scoreResMin = int(self.scoreRess.keys()[0])
+		self.scoreResMax = int(self.scoreRess.keys()[-1])
+		
+		# Path to file where the settings are saved		
+		home = expanduser("~")
+		self.directory = os.path.join(home, ".chord_training")
+		# Create directory in case it doesn't exist
+		if not os.path.isdir(self.directory):
+			os.makedirs(self.directory)
+		self.savefile = os.path.join(self.directory, "settings")	
+		self.settings = Settings(self)
+
+		# Framework creating the needed score images for chord voicings and corresponding scales
+		self.score = Score(self.directory)
+		
+		# Trick the system to disable screen savers during training
+		self.moveMouse = True
+		
+		# Prevent the screensaver from starting
+		self.stayOn = StayOn()
+		
+		# Set pause to off
+		self.pause = False  
+		
+		# Override setting in case the feature is unavailable
+		if not self.stayOn.isEnabled():
+			self.moveMouse = False
+		
+		self.SetChord()
+		
+		# Set up the menus
+		self.InitMenus()
+		
+		# Attempt to read other settings from the savefile, in case it exists
+		self.settings.LoadSettings()
+		
+		# Set up the layout
+		self.InitUI()
+		
+		# Set up the timer to refresh the display
+		self.SetTimer()
+
+		# Define keyboard shortcuts
+		self.KeyBindings()
+
+		# Set elapsed time so that the layout is refreshed immediately at the start of the program
+		self.elapsedTime = self.duration * 1000
+		self.changedLayout = True
+		
+		# Indicators for new parameters (when True leads to a renewal of the upcoming chords in the stack)
+		self.changedParameters = False
+		
+		self.Centre()
+		self.Show(True)
+
+	def SaveFile(self, event):
+		saveFileDialog = wx.FileDialog(self, "Save As", self.directory, self.savefile, "*", wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+		saveFileDialog.ShowModal()
+		savefile = saveFileDialog.GetPath()
+		
+		self.settings.SaveSettings(event, savefile)
+		
+		saveFileDialog.Destroy()
+		
+	def LoadFile(self, event):
+		openFileDialog = wx.FileDialog(self, "Open", self.directory, self.savefile, "*", wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+		openFileDialog.ShowModal()
+		savefile = openFileDialog.GetPath()
+		
+		self.settings.LoadSettings(event, savefile)
+
+		# Mark the current parameters as new, so as to renew the chord stack 
+		self.changedParameters = True
+		
+		openFileDialog.Destroy()
+
+	def UpdateFontSize(self):
+		if self.fontSize != self.fontSizeOld:
+			self.font = wx.Font(self.fontSize, wx.SWISS, wx.NORMAL, wx.NORMAL)
+			self.chordDisplay.SetFont(self.font)
+			
+			self.fontSmaller = wx.Font(self.getSmallerFontsize(self.fontSize), wx.SWISS, wx.NORMAL, wx.NORMAL)
+			self.chordDisplayPrev.SetFont(self.fontSmaller)
+			self.chordDisplayNext.SetFont(self.fontSmaller)
+
+			self.fontStatus = wx.Font(self.getSmallerFontsize(self.fontSize), wx.SWISS, wx.NORMAL, wx.NORMAL)
+			
+			self.scaleNameTitle.SetFont(self.fontSmaller)
+			self.scaleName.SetFont(self.font)
+			self.status.SetFont(self.fontStatus)
+
+			self.fontSizeOld = self.fontSize
+# 			self.changedLayout = True
+			
+	def PrepareImage(self, currChord, imageMode):
+		try:
+			# Set the image for the score
+			if imageMode == "Chord" and not self.displayScore:
+				raise NoImage
+			elif imageMode == "Scale" and not self.displayScale:
+				raise NoImage
+			else:
+				try:
+					if imageMode == "Chord":
+						imageFile = currChord.GetImgName(self.scoreRes)
+					elif imageMode == "Scale":
+						imageFile = currChord.GetScaleImgName(self.scoreRes)
+					else:
+						raise
+				except:
+					raise NoImage
+			imageFile = os.path.join(self.directory, imageFile)
+			try:
+				with open(imageFile): pass
+				png = wx.Image(imageFile, wx.BITMAP_TYPE_ANY).ConvertToBitmap()
+			except IOError:
+				raise NoImage
+
+		except NoImage:
+			png = self.defaultImage
+			# Only attempt to generate the score if: 
+			# - there is a proper chord
+			# - the score is enabled
+			if imageMode == "Chord" and currChord.GetPitch() != "-" and self.displayScore:
+				self.score.GenerateImage(currChord, self.scoreRes)
+			elif imageMode == "Scale" and currChord.GetPitch() != "-" and self.displayScale:
+				self.score.GenerateScaleImage(currChord, self.scoreRes)
+				
+		if imageMode == "Chord":		
+			self.chordImage.SetBitmap(png)
+		elif imageMode == "Scale":		
+			self.scaleImage.SetBitmap(png)
 					
 	def OnTimer(self, whatever):
 		if self.pause:
@@ -1119,10 +1193,13 @@ upper = \\relative c' {
 		# Menu: FILE
 		fileMenu = wx.Menu()
 
-		fileMenu.Append(wx.ID_NEW, '&New')
 		fileMenu.Append(wx.ID_OPEN, '&Open')
 		fileMenu.Append(wx.ID_SAVE, '&Save')
-		self.Bind(wx.EVT_MENU, self.SaveSettings, id=wx.ID_SAVE)
+		fileMenu.Append(wx.ID_SAVEAS, '&Save as...')
+			
+		self.Bind(wx.EVT_MENU, self.LoadFile, id=wx.ID_OPEN)
+		self.Bind(wx.EVT_MENU, self.settings.SaveSettings, id=wx.ID_SAVE)
+		self.Bind(wx.EVT_MENU, self.SaveFile, id=wx.ID_SAVEAS)
 
 # 		fileMenu.Append(wx.ID_EXIT, '&Quit')
 # 		self.Bind(wx.EVT_MENU, self.OnQuit, id=wx.ID_EXIT)
@@ -1135,16 +1212,16 @@ upper = \\relative c' {
 		menubar.Append(fileMenu, '&File')
 
 		# Menu: MODE
-		modeMenu = wx.Menu()
+		self.modeMenu = wx.Menu()
 		self.modeMenuId = {}
 		self.modeMenuIdRev = {}
 		for mode in self.modes.keys():
 			self.modeMenuId[mode] = wx.NewId()
 			self.modeMenuIdRev[self.modeMenuId[mode]] = mode
-			modeMenu.Append(self.modeMenuId[mode], mode, "", wx.ITEM_RADIO)
-			modeMenu.Check(self.modeMenuId[mode], self.modes[mode])
+			self.modeMenu.Append(self.modeMenuId[mode], mode, "", wx.ITEM_RADIO)
+			self.modeMenu.Check(self.modeMenuId[mode], self.modes[mode])
 			self.Bind(wx.EVT_MENU, self.MenuSetMode, id=self.modeMenuId[mode])
-		menubar.Append(modeMenu, '&Mode')
+		menubar.Append(self.modeMenu, '&Mode')
 
 		# Menu: TONES
 		self.tonesMenu = wx.Menu()
@@ -1200,7 +1277,7 @@ upper = \\relative c' {
 		menubar.Append(self.qualitiesMenu, '&Qualities')
 			
 		# Menu: DURATION
-		durationMenu = wx.Menu()
+		self.durationMenu = wx.Menu()
 		self.durationMenuId = {}
 		self.durationMenuIdRev = {}
 		self.duration = int(self.duration)
@@ -1209,62 +1286,62 @@ upper = \\relative c' {
 		for duration in range(self.durationMin, self.durationMax + 1):
 			self.durationMenuId[duration] = wx.NewId()
 			self.durationMenuIdRev[self.durationMenuId[duration]] = duration
-			durationMenu.Append(self.durationMenuId[duration], "%d" % duration, "", wx.ITEM_RADIO)
+			self.durationMenu.Append(self.durationMenuId[duration], "%d" % duration, "", wx.ITEM_RADIO)
 			if duration == self.duration:
-				durationMenu.Check(self.durationMenuId[duration], True)
+				self.durationMenu.Check(self.durationMenuId[duration], True)
 			self.Bind(wx.EVT_MENU, self.MenuSetDuration, id=self.durationMenuId[duration])
 
-		menubar.Append(durationMenu, '&Duration')
+		menubar.Append(self.durationMenu, '&Duration')
 
 		# Menu: SETTINGS
-		settingsMenu = wx.Menu()
-		fontSizeMenu = wx.Menu()
+		self.settingsMenu = wx.Menu()
+		self.fontSizeMenu = wx.Menu()
 		self.fontSizeMenuId = {}
 		self.fontSizeMenuIdRev = {}
 		for fontSize in self.fontSizes.keys():
 			self.fontSizeMenuId[fontSize] = wx.NewId()
 			self.fontSizeMenuIdRev[self.fontSizeMenuId[fontSize]] = fontSize
-			fontSizeMenu.Append(self.fontSizeMenuId[fontSize], "%s" % fontSize, "", wx.ITEM_RADIO)
+			self.fontSizeMenu.Append(self.fontSizeMenuId[fontSize], "%s" % fontSize, "", wx.ITEM_RADIO)
 			if int(fontSize) == self.fontSize:
-				fontSizeMenu.Check(self.fontSizeMenuId[fontSize], True)
+				self.fontSizeMenu.Check(self.fontSizeMenuId[fontSize], True)
 			self.Bind(wx.EVT_MENU, self.MenuSetFontSize, id=self.fontSizeMenuId[fontSize])
 
-		scoreResMenu = wx.Menu()
+		self.scoreResMenu = wx.Menu()
 		self.scoreResMenuId = {}
 		self.scoreResMenuIdRev = {}
 		for scoreRes in self.scoreRess.keys():
 			self.scoreResMenuId[scoreRes] = wx.NewId()
 			self.scoreResMenuIdRev[self.scoreResMenuId[scoreRes]] = scoreRes
-			scoreResMenu.Append(self.scoreResMenuId[scoreRes], "%s" % scoreRes, "", wx.ITEM_RADIO)
+			self.scoreResMenu.Append(self.scoreResMenuId[scoreRes], "%s" % scoreRes, "", wx.ITEM_RADIO)
 			if int(scoreRes) == self.scoreRes:
-				scoreResMenu.Check(self.scoreResMenuId[scoreRes], True)
+				self.scoreResMenu.Check(self.scoreResMenuId[scoreRes], True)
 			self.Bind(wx.EVT_MENU, self.MenuSetScoreRes, id=self.scoreResMenuId[scoreRes])
 
-		singleThreadId = wx.NewId()
-		settingsMenu.Append(singleThreadId, "Single &thread", "", wx.ITEM_CHECK)
-		settingsMenu.Check(singleThreadId, self.singleThread)
-		self.Bind(wx.EVT_MENU, self.MenuSetSingleThread, id=singleThreadId)
+		self.singleThreadId = wx.NewId()
+		self.settingsMenu.Append(self.singleThreadId, "Single &thread", "", wx.ITEM_CHECK)
+		self.settingsMenu.Check(self.singleThreadId, self.singleThread)
+		self.Bind(wx.EVT_MENU, self.MenuSetSingleThread, id=self.singleThreadId)
 
-		displayScoreId = wx.NewId()
-		settingsMenu.Append(displayScoreId, "&Display score", "", wx.ITEM_CHECK)
-		settingsMenu.Check(displayScoreId, self.displayScore)
-		self.Bind(wx.EVT_MENU, self.MenuSetDisplayScore, id=displayScoreId)
+		self.displayScoreId = wx.NewId()
+		self.settingsMenu.Append(self.displayScoreId, "&Display score", "", wx.ITEM_CHECK)
+		self.settingsMenu.Check(self.displayScoreId, self.displayScore)
+		self.Bind(wx.EVT_MENU, self.MenuSetDisplayScore, id=self.displayScoreId)
 
-		displayScaleId = wx.NewId()
-		settingsMenu.Append(displayScaleId, "D&isplay scale", "", wx.ITEM_CHECK)
-		settingsMenu.Check(displayScaleId, self.displayScale)
-		self.Bind(wx.EVT_MENU, self.MenuSetDisplayScale, id=displayScaleId)
+		self.displayScaleId = wx.NewId()
+		self.settingsMenu.Append(self.displayScaleId, "D&isplay scale", "", wx.ITEM_CHECK)
+		self.settingsMenu.Check(self.displayScaleId, self.displayScale)
+		self.Bind(wx.EVT_MENU, self.MenuSetDisplayScale, id=self.displayScaleId)
 
-		stayOnId = wx.NewId()
-		settingsMenu.Append(stayOnId, "Disable &Screensaver", "", wx.ITEM_CHECK)
-		settingsMenu.Check(stayOnId, self.moveMouse)
-		self.Bind(wx.EVT_MENU, self.MenuSetStayOn, id=stayOnId)
-		settingsMenu.Enable(stayOnId, self.stayOn.isEnabled())
+		self.stayOnId = wx.NewId()
+		self.settingsMenu.Append(self.stayOnId, "Disable &Screensaver", "", wx.ITEM_CHECK)
+		self.settingsMenu.Check(self.stayOnId, self.moveMouse)
+		self.Bind(wx.EVT_MENU, self.MenuSetStayOn, id=self.stayOnId)
+		self.settingsMenu.Enable(self.stayOnId, self.stayOn.isEnabled())
 
-		settingsMenu.AppendSeparator()
+		self.settingsMenu.AppendSeparator()
 
-		settingsMenu.AppendMenu(wx.ID_ANY, '&Font size', fontSizeMenu)
-		settingsMenu.AppendMenu(wx.ID_ANY, '&Score resolution', scoreResMenu)
+		self.settingsMenu.AppendMenu(wx.ID_ANY, '&Font size', self.fontSizeMenu)
+		self.settingsMenu.AppendMenu(wx.ID_ANY, '&Score resolution', self.scoreResMenu)
 
 		lilypondPathMenu = wx.Menu()
 		lilypondPathId = wx.NewId()
@@ -1275,9 +1352,9 @@ upper = \\relative c' {
 		editLilypondPathId = wx.NewId()
 		lilypondPathMenu.Append(editLilypondPathId, "Edit...")
 
-		settingsMenu.AppendMenu(wx.ID_ANY, '&Path to Lilypond', lilypondPathMenu)
+		self.settingsMenu.AppendMenu(wx.ID_ANY, '&Path to Lilypond', lilypondPathMenu)
 
-		menubar.Append(settingsMenu, '&Settings')
+		menubar.Append(self.settingsMenu, '&Settings')
 
 		self.SetMenuBar(menubar)
 
@@ -1601,7 +1678,7 @@ upper = \\relative c' {
 		self.moveMouse = evt.IsChecked()
 			
 	def OnQuit(self, e):
-		self.SaveSettings()
+		self.settings.SaveSettings()
 		self.Close()
 
 	def OnKeyDown(self, e):
