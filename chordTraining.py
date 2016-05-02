@@ -13,7 +13,7 @@ import re
 from subprocess import call, Popen
 import os
 from os.path import expanduser
-
+from distutils import spawn
 
 class StayOn:
 	def __init__(self):
@@ -283,13 +283,17 @@ class Chord:
 
 	def GetBaseFileName(self):
 		if self.mode == 'Chord':
-			self.fileName = "chord_" + self.GetLyPitch() + "_" + self.GetQuality() + "_res%s%s"
+			#self.fileName = "chord_" + self.GetLyPitch() + "_" + self.GetQuality() + "_res%s%s"
+			self.fileName = os.path.join("res%s", "chord_" + self.GetLyPitch() + "_" + self.GetQuality() + "%s")
 		elif self.mode == 'II-V-I':
-			self.fileName = "prog_II-V-I_" + self.GetLyPitch() + "_res%s%s"
+			#self.fileName = "prog_II-V-I_" + self.GetLyPitch() + "_res%s%s"
+			self.fileName = os.path.join("res%s", "prog_II-V-I_" + self.GetLyPitch() + "%s")
 		elif self.mode == 'II-V':
-			self.fileName = "prog_II-V_" + self.GetLyPitch() + "_res%s%s"
+			#self.fileName = "prog_II-V_" + self.GetLyPitch() + "_res%s%s"
+			self.fileName = os.path.join("res%s", "prog_II-V_" + self.GetLyPitch() + "%s")
 		elif self.mode == 'V-I':
-			self.fileName = "prog_V-I_" + self.GetLyPitch() + "_res%s%s"
+			#self.fileName = "prog_V-I_" + self.GetLyPitch() + "_res%s%s"
+			self.fileName = os.path.join("res%s", "prog_V-I_" + self.GetLyPitch() + "%s")
 		else:
 			raise
 		
@@ -303,7 +307,8 @@ class Chord:
 
 	def GetBaseScaleFileName(self):
 		self.DetermineScale()
-		self.scaleFileName = "scale_" + self.GetLyScalePitch() + "_" + self.GetScaleKind() + "_res%s%s"
+		#self.scaleFileName = "scale_" + self.GetLyScalePitch() + "_" + self.GetScaleKind() + "_res%s%s"
+		self.scaleFileName = os.path.join("res%s", "scale_" + self.GetLyScalePitch() + "_" + self.GetScaleKind() + "%s")
 		
 		return self.scaleFileName
 
@@ -597,8 +602,9 @@ class Settings():
 
 
 class Score:
-	def __init__(self, directory):
+	def __init__(self, directory, lilypond):
 		self.directory = directory
+		self.lilypond = lilypond
 		
 	def GenerateImage(self, chord, scoreRes):
 		basisHeader = '''
@@ -875,12 +881,13 @@ upper = \\relative c' {
 			f.close()
 		
 			print "rc = %s" % rc
+			
 			# The lilypond call apparently won't work properly without an explicit stdout redirection...
 			lilypondOutputFile = os.path.join(self.directory, "lilypond_outputFile")
 			f = open(lilypondOutputFile, "w")			
-			proc = Popen(["lilypond", "--png", "-dresolution=" + str(scoreRes), "-dpreview", lyfile], stdout=f, cwd=self.directory)
+			proc = Popen([self.lilypond, "--png", "-dresolution=" + str(scoreRes), "-dpreview", lyfile], stdout=f, cwd=self.directory)
 			# Do not continue after starting the lilypond process
-			# (useful on slower machines, e.g. raspberryPi 
+			# (useful on slower machines, e.g. raspberryPi)
 			if self.singleThread:
 				proc.wait()
 				
@@ -955,9 +962,27 @@ class ChordTraining(wx.Frame):
 		self.windowSizeX = 500
 		self.windowSizeY = 400
 		
+		# Path the lilypond exe needed to generate score images
+		try:
+			self.lilypond = spawn.find_executable("lilypond")
+			# Special case for windows
+ 			if self.lilypond is None and os.name == 'nt':
+				self.lilypond = os.path.normpath(spawn.find_executable("lilypond", "c:/cygwin/bin"))
+		except:
+			self.lilypond = "lilypond"
+
 		# Use only one thread on slower machines 
 		# when generating scores using lilypond
 		self.singleThread = True
+
+		# Path to file where the settings are saved		
+		home = expanduser("~")
+		self.directory = os.path.join(home, ".chord_training")
+		# Create directory in case it doesn't exist
+		if not os.path.isdir(self.directory):
+			os.makedirs(self.directory)
+		self.savefile = os.path.join(self.directory, "settings")	
+		self.settings = Settings(self)
 
 		# Default font size for chord names
 		self.fontSize = 64
@@ -982,18 +1007,15 @@ class ChordTraining(wx.Frame):
 		self.scoreRess['300'] = False
 		self.scoreResMin = int(self.scoreRess.keys()[0])
 		self.scoreResMax = int(self.scoreRess.keys()[-1])
-		
-		# Path to file where the settings are saved		
-		home = expanduser("~")
-		self.directory = os.path.join(home, ".chord_training")
-		# Create directory in case it doesn't exist
-		if not os.path.isdir(self.directory):
-			os.makedirs(self.directory)
-		self.savefile = os.path.join(self.directory, "settings")	
-		self.settings = Settings(self)
 
+		# Make sure the subdirectory exists
+		for scoreRes in self.scoreRess.keys():
+			targetDir = os.path.join(self.directory, "res" + scoreRes)
+			if not os.path.isdir(targetDir):
+				os.mkdir(targetDir)	
+		
 		# Framework creating the needed score images for chord voicings and corresponding scales
-		self.score = Score(self.directory)
+		self.score = Score(self.directory, self.lilypond)
 		
 		# Trick the system to disable screen savers during training
 		self.moveMouse = True
@@ -1056,6 +1078,19 @@ class ChordTraining(wx.Frame):
 		
 		openFileDialog.Destroy()
 
+	def PickLilypond(self, event):		
+		lilypondDir = os.path.dirname(self.lilypond) 
+		lilypondProg = self.lilypond
+		openFileDialog = wx.FileDialog(self, "Select the location of the lilypond program", self.directory, self.lilypond, "*", wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+		openFileDialog.ShowModal()
+		self.lilypond = openFileDialog.GetPath()
+
+		# Reset the path in the menu
+		self.lilypondPathMenu.SetLabel(self.lilypondPathId, self.lilypond)
+		
+		
+		openFileDialog.Destroy()
+		
 	def UpdateFontSize(self):
 		if self.fontSize != self.fontSizeOld:
 			self.font = wx.Font(self.fontSize, wx.SWISS, wx.NORMAL, wx.NORMAL)
@@ -1193,10 +1228,13 @@ class ChordTraining(wx.Frame):
 		# Menu: FILE
 		fileMenu = wx.Menu()
 
+		wx.ID_PAUSE = wx.NewId()
+		fileMenu.Append(wx.ID_PAUSE, '&Pause')
 		fileMenu.Append(wx.ID_OPEN, '&Open')
 		fileMenu.Append(wx.ID_SAVE, '&Save')
-		fileMenu.Append(wx.ID_SAVEAS, '&Save as...')
+		fileMenu.Append(wx.ID_SAVEAS, 'Save &as...')
 			
+		self.Bind(wx.EVT_MENU, self.TogglePause, id=wx.ID_PAUSE)
 		self.Bind(wx.EVT_MENU, self.LoadFile, id=wx.ID_OPEN)
 		self.Bind(wx.EVT_MENU, self.settings.SaveSettings, id=wx.ID_SAVE)
 		self.Bind(wx.EVT_MENU, self.SaveFile, id=wx.ID_SAVEAS)
@@ -1343,16 +1381,18 @@ class ChordTraining(wx.Frame):
 		self.settingsMenu.AppendMenu(wx.ID_ANY, '&Font size', self.fontSizeMenu)
 		self.settingsMenu.AppendMenu(wx.ID_ANY, '&Score resolution', self.scoreResMenu)
 
-		lilypondPathMenu = wx.Menu()
-		lilypondPathId = wx.NewId()
-		pathToLilypond = "test"
-		lilypondPathMenu.Append(lilypondPathId, "%s" % pathToLilypond)
-		lilypondPathMenu.Enable(lilypondPathId, False)
-		lilypondPathMenu.AppendSeparator()
+		self.lilypondPathMenu = wx.Menu()
+		self.lilypondPathId = wx.NewId()
+		pathToLilypond = self.lilypond
+		self.lilypondPathMenu.Append(self.lilypondPathId, "%s" % pathToLilypond)
+		self.lilypondPathMenu.Enable(self.lilypondPathId, False)
+		self.lilypondPathMenu.AppendSeparator()
 		editLilypondPathId = wx.NewId()
-		lilypondPathMenu.Append(editLilypondPathId, "Edit...")
+		self.lilypondPathMenu.Append(editLilypondPathId, "&Select...")
+		
+		self.Bind(wx.EVT_MENU, self.PickLilypond, id=editLilypondPathId)
 
-		self.settingsMenu.AppendMenu(wx.ID_ANY, '&Path to Lilypond', lilypondPathMenu)
+		self.settingsMenu.AppendMenu(wx.ID_ANY, '&Path to Lilypond', self.lilypondPathMenu)
 
 		menubar.Append(self.settingsMenu, '&Settings')
 
@@ -1492,7 +1532,7 @@ class ChordTraining(wx.Frame):
 		hboxImg2.Add(self.scaleImage, 1, wx.EXPAND|wx.ALL, 10) # add image
 		hboxImg2.Add(hSpacer, 0, wx.EXPAND|wx.ALL,10)
 		self.layout.Add(hboxImg2, 0, wx.EXPAND)
-		self.layout.Add(vSpacer)		
+		self.layout.Add(vSpacer)
 
 		# Status bar
 		self.status = wx.StaticText(self,label="")#,style=wx.BORDER_DOUBLE)
@@ -1681,21 +1721,24 @@ class ChordTraining(wx.Frame):
 		self.settings.SaveSettings()
 		self.Close()
 
+	def TogglePause(self, e):
+		self.pause = not self.pause
+		pauseLabel = "(Paused)"
+		if self.pause:
+			self.timer.Stop()
+			label = pauseLabel
+		else:
+			self.timer.Start(self.refreshPeriod)  # milliseconds
+			label = ""
+		self.status.SetLabel(label)
+
 	def OnKeyDown(self, e):
 		key = e.GetKeyCode()
 
 		if key == wx.WXK_ESCAPE:
 			self.OnQuit(e)
 		elif key == wx.WXK_SPACE:
-			self.pause = not self.pause
-			pauseLabel = "(Paused)"
-			if self.pause:
-				self.timer.Stop()
-				label = pauseLabel
-			else:
-				self.timer.Start(self.refreshPeriod)  # milliseconds
-				label = ""
-			self.status.SetLabel(label)
+			self.TogglePause(e)
 	
 	def AvailablePitches(self):
 		list = []
