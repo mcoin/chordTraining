@@ -602,10 +602,32 @@ class Settings():
 
 
 class Score:
-	def __init__(self, directory, lilypond):
+	def __init__(self, directory):
 		self.directory = directory
-		self.lilypond = lilypond
+		self.lilypond = "lilypond"
 		
+		# Path the lilypond exe needed to generate score images
+		try:
+			self.lilypond = spawn.find_executable("lilypond")
+			# Special case for windows
+ 			if self.lilypond is None and os.name == 'nt':
+				self.lilypond = os.path.normpath(spawn.find_executable("lilypond", "c:/cygwin/bin"))
+		except:
+			self.lilypond = "lilypond"
+		
+		self.imageToolsAvailable = False
+		try:
+			from PIL import Image
+			self.imageToolsAvailable = True
+		except:
+			pass
+		
+	def IsLilypondAvailable(self):
+		return os.path.isfile(self.lilypond)
+	
+	def AreImageToolsAvailable(self):
+		return self.imageToolsAvailable
+	
 	def GenerateImage(self, chord, scoreRes):
 		basisHeader = '''
 #(set-default-paper-size "a4")
@@ -962,15 +984,6 @@ class ChordTraining(wx.Frame):
 		self.windowSizeX = 500
 		self.windowSizeY = 400
 		
-		# Path the lilypond exe needed to generate score images
-		try:
-			self.lilypond = spawn.find_executable("lilypond")
-			# Special case for windows
- 			if self.lilypond is None and os.name == 'nt':
-				self.lilypond = os.path.normpath(spawn.find_executable("lilypond", "c:/cygwin/bin"))
-		except:
-			self.lilypond = "lilypond"
-
 		# Use only one thread on slower machines 
 		# when generating scores using lilypond
 		self.singleThread = True
@@ -1015,7 +1028,7 @@ class ChordTraining(wx.Frame):
 				os.mkdir(targetDir)	
 		
 		# Framework creating the needed score images for chord voicings and corresponding scales
-		self.score = Score(self.directory, self.lilypond)
+		self.score = Score(self.directory)
 		
 		# Trick the system to disable screen savers during training
 		self.moveMouse = True
@@ -1079,15 +1092,18 @@ class ChordTraining(wx.Frame):
 		openFileDialog.Destroy()
 
 	def PickLilypond(self, event):		
-		lilypondDir = os.path.dirname(self.lilypond) 
-		lilypondProg = self.lilypond
-		openFileDialog = wx.FileDialog(self, "Select the location of the lilypond program", self.directory, self.lilypond, "*", wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+		lilypondDir = os.path.dirname(self.score.lilypond) 
+		lilypondProg = self.score.lilypond
+		openFileDialog = wx.FileDialog(self, "Select the location of the lilypond program", lilypondDir, lilypondProg, "*", wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
 		openFileDialog.ShowModal()
-		self.lilypond = openFileDialog.GetPath()
+		self.score.lilypond = openFileDialog.GetPath()
 
 		# Reset the path in the menu
-		self.lilypondPathMenu.SetLabel(self.lilypondPathId, self.lilypond)
+		self.lilypondPathMenu.SetLabel(self.lilypondPathId, self.score.lilypond)
 		
+		# Update the availability of the option to generate the score images in the menu
+		generateScoreIsPossible = self.score.IsLilypondAvailable() and self.score.AreImageToolsAvailable()
+ 		self.settingsMenu.Enable(self.generateScoresId, generateScoreIsPossible)
 		
 		openFileDialog.Destroy()
 		
@@ -1383,7 +1399,7 @@ class ChordTraining(wx.Frame):
 
 		self.lilypondPathMenu = wx.Menu()
 		self.lilypondPathId = wx.NewId()
-		pathToLilypond = self.lilypond
+		pathToLilypond = self.score.lilypond
 		self.lilypondPathMenu.Append(self.lilypondPathId, "%s" % pathToLilypond)
 		self.lilypondPathMenu.Enable(self.lilypondPathId, False)
 		self.lilypondPathMenu.AppendSeparator()
@@ -1394,6 +1410,13 @@ class ChordTraining(wx.Frame):
 
 		self.settingsMenu.AppendMenu(wx.ID_ANY, '&Path to Lilypond', self.lilypondPathMenu)
 
+		self.settingsMenu.AppendSeparator()
+		self.generateScoresId = wx.NewId()
+		self.settingsMenu.Append(self.generateScoresId, "&Generate Score images")
+		generateScoreIsPossible =  self.score.AreImageToolsAvailable() and self.score.IsLilypondAvailable()
+ 		self.settingsMenu.Enable(self.generateScoresId, generateScoreIsPossible)
+
+		
 		menubar.Append(self.settingsMenu, '&Settings')
 
 		self.SetMenuBar(menubar)
