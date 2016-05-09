@@ -628,7 +628,7 @@ class Score:
 	def AreImageToolsAvailable(self):
 		return self.imageToolsAvailable
 	
-	def GenerateImage(self, chord, scoreRes):
+	def GenerateImage(self, chord, scoreRes, singleThread, overwrite = False):
 		basisHeader = '''
 #(set-default-paper-size "a4")
 
@@ -745,6 +745,11 @@ lower = \\relative c {
 			raise
 		
 		lyfile = os.path.join(self.directory, lyfile)
+		
+		# Only if the target file does not yet exist
+		if not overwrite and os.path.isfile(re.sub(r"\.ly", r".preview.png", lyfile)):
+			return
+		
 		f = open(lyfile, "w")
 				
 		if chord.GetMode() == 'Chord':
@@ -830,9 +835,9 @@ lower = \\relative c {
 		f.write(content)
 		f.close()
 
-		self.CallLilypond(lyfile, scoreRes)
+		self.CallLilypond(lyfile, scoreRes, singleThread)
 		
-	def GenerateScaleImage(self, chord, scoreRes):
+	def GenerateScaleImage(self, chord, scoreRes, singleThread, overwrite = False):
 		basisHeader = '''
 #(set-default-paper-size "a4")
 
@@ -884,6 +889,11 @@ upper = \\relative c' {
 			raise
 		
 		lyfile = os.path.join(self.directory, lyfile)
+
+		# Only if the target file does not yet exist
+		if not overwrite and os.path.isfile(re.sub(r"\.ly", r".preview.png", lyfile)):
+			return		
+
 		f = open(lyfile, "w")
 		
 		# Transpose if needed
@@ -892,17 +902,19 @@ upper = \\relative c' {
 		f.write(content)
 		f.close()
 
-		self.CallLilypond(lyfile, scoreRes)
+		self.CallLilypond(lyfile, scoreRes, singleThread)
 		
-	def CallLilypond(self, lyfile, scoreRes):
+	def CallLilypond(self, lyfile, scoreRes, singleThread = False):
+		dbg = False
 		try:
-			catOutputFile = os.path.join(self.directory, "cat_outputFile")
-			f = open(catOutputFile, "w")
-	
-			rc = call(["cat", lyfile], stdout=f)
-			f.close()
+			if dbg:
+				catOutputFile = os.path.join(self.directory, "cat_outputFile")
+				f = open(catOutputFile, "w")
 		
-			print "rc = %s" % rc
+				rc = call(["cat", lyfile], stdout=f)
+				f.close()
+			
+				print "rc = %s" % rc
 			
 			# The lilypond call apparently won't work properly without an explicit stdout redirection...
 			lilypondOutputFile = os.path.join(self.directory, "lilypond_outputFile")
@@ -910,11 +922,20 @@ upper = \\relative c' {
 			proc = Popen([self.lilypond, "--png", "-dresolution=" + str(scoreRes), "-dpreview", lyfile], stdout=f, cwd=self.directory)
 			# Do not continue after starting the lilypond process
 			# (useful on slower machines, e.g. raspberryPi)
-			if self.singleThread:
+			if singleThread:
 				proc.wait()
 				
 			f.close()
-			print "rc = %s" % rc
+			
+			if dbg:
+				print "rc = %s" % rc
+
+			# Remove the normal .png file (only the .preview.png file is needed)
+			pngFile = re.sub(r".ly", r".png", lyfile)
+			try:
+				os.remove(pngFile)
+			except:
+				pass
 		except:
 			print "Call to lilypond failed."
 					
@@ -1106,7 +1127,80 @@ class ChordTraining(wx.Frame):
  		self.settingsMenu.Enable(self.generateScoresId, generateScoreIsPossible)
 		
 		openFileDialog.Destroy()
+
+	def resizeImgCanvas(self, imgFile, canvasWidth, canvasHeight):
+		from PIL import Image
+		from math import floor
 		
+		imgOrig = Image.open(imgFile)
+		imgWidth, imgHeight = imgOrig.size
+	
+		# Center the image
+		x1 = int(floor((canvasWidth - imgWidth) / 2))
+		y1 = int(floor((canvasHeight - imgHeight) / 2))
+	
+		mode = imgOrig.mode
+		if len(mode) == 1:  # L, 1
+			bckgrnd = (255)
+		elif len(mode) == 3:  # RGB
+			bckgrnd = (255, 255, 255)
+		elif len(mode) == 4:  # RGBA, CMYK
+			bckgrnd = (255, 255, 255, 255)
+	
+		imgNew = Image.new(mode, (canvasWidth, canvasHeight), bckgrnd)
+		imgNew.paste(imgOrig, (x1, y1, x1 + imgWidth, y1 + imgHeight))
+		imgNew.save(imgFile)
+		
+	def GenerateScores(self, event):
+		# Generate images for all possible chords and scales in all available resolutions
+		from PIL import Image
+		
+		for scoreRes in self.scoreRess:
+			# Scores
+			maxWidth = 0
+			maxHeight = 0
+			imgList = []
+			for pitch in self.pitches:
+				for quality in self.qualities:
+					chord = Chord(pitch, quality, "Chord")
+					self.score.GenerateImage(chord, scoreRes, True, False)
+					imgFile = chord.GetImgName(scoreRes)
+					imgFile = os.path.join(self.directory, imgFile)
+ 					
+					imgList.append(imgFile)
+					img = Image.open(imgFile)
+					width, height = img.size
+					maxWidth = max(maxWidth, width)
+					maxHeight = max(maxHeight, height)
+ 					
+			for imgFile in imgList:
+				self.resizeImgCanvas(imgFile, maxWidth, maxHeight)
+			
+			# Scales
+			maxWidth = 0
+			maxHeight = 0
+			imgList = []
+			qualities = ["Maj7", "minMaj7", "dim7"] # Qualities leading to the generation of all possible scales (Major, Minor, Diminished)
+			for pitch in self.pitches:
+				for quality in qualities:
+					# For the diminished scale, only a subset of all possibilities is needed
+					if quality == "dim7" and self.pitches.keys().index(pitch) != self.pitches.keys().index(pitch) % 3:
+						continue
+					chord = Chord(pitch, quality, "Chord")
+					self.score.GenerateScaleImage(chord, scoreRes, True, False)
+					imgFile = chord.GetScaleImgName(scoreRes)
+					imgFile = os.path.join(self.directory, imgFile)
+					
+					imgList.append(imgFile)
+					img = Image.open(imgFile)
+					width, height = img.size
+					maxWidth = max(maxWidth, width)
+					maxHeight = max(maxHeight, height)
+					
+			for imgFile in imgList:
+				self.resizeImgCanvas(imgFile, maxWidth, maxHeight)
+					
+			
 	def UpdateFontSize(self):
 		if self.fontSize != self.fontSizeOld:
 			self.font = wx.Font(self.fontSize, wx.SWISS, wx.NORMAL, wx.NORMAL)
@@ -1155,9 +1249,9 @@ class ChordTraining(wx.Frame):
 			# - there is a proper chord
 			# - the score is enabled
 			if imageMode == "Chord" and currChord.GetPitch() != "-" and self.displayScore:
-				self.score.GenerateImage(currChord, self.scoreRes)
+				self.score.GenerateImage(currChord, self.scoreRes, self.singleThread)
 			elif imageMode == "Scale" and currChord.GetPitch() != "-" and self.displayScale:
-				self.score.GenerateScaleImage(currChord, self.scoreRes)
+				self.score.GenerateScaleImage(currChord, self.scoreRes, self.singleThread)
 				
 		if imageMode == "Chord":		
 			self.chordImage.SetBitmap(png)
@@ -1416,6 +1510,7 @@ class ChordTraining(wx.Frame):
 		generateScoreIsPossible =  self.score.AreImageToolsAvailable() and self.score.IsLilypondAvailable()
  		self.settingsMenu.Enable(self.generateScoresId, generateScoreIsPossible)
 
+		self.Bind(wx.EVT_MENU, self.GenerateScores, id=self.generateScoresId)
 		
 		menubar.Append(self.settingsMenu, '&Settings')
 
