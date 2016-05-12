@@ -12,7 +12,6 @@ import collections
 import re
 from subprocess import call, Popen
 import os
-from os.path import expanduser
 from distutils import spawn
 
 class StayOn:
@@ -798,7 +797,15 @@ lower = \\relative c {
 			elif chord.GetQuality() == "dim7":
 				content = re.sub(r"chordForm1", r"c ef gf a", content)
 				content = re.sub(r"chordForm2", r"c ef gf b", content)
-				content = re.sub(r"\\key c \\major", r"\\key %s \\major" % (chord.GetLyPitch().lower()), content)
+				indexPitch = chord.pitches.index(chord.GetPitch())
+				indexPitchCompensated = 12 - indexPitch
+				indexPitchCompensated = indexPitchCompensated % len(chord.pitches)
+				pitchCompensatedLy = chord.ConvertToLy(chord.pitches[indexPitchCompensated])
+				if pitchCompensatedLy == "Fs":
+					# Avoid very weird key signatures for F#
+					content = re.sub(r"\\key c \\major", r"\\key gf \\major", content)
+				else:
+					content = re.sub(r"\\key c \\major", r"\\key %s \\major" % (pitchCompensatedLy.lower()), content)
 			elif chord.GetQuality() == "7b9":
 				content = re.sub(r"chordForm1", r"e a bf df", content)
 				content = re.sub(r"chordForm2", r"bf df e a", content)
@@ -1010,7 +1017,7 @@ class ChordTraining(wx.Frame):
 		self.singleThread = True
 
 		# Path to file where the settings are saved		
-		home = expanduser("~")
+		home = os.path.expanduser("~")
 		self.directory = os.path.join(home, ".chord_training")
 		# Create directory in case it doesn't exist
 		if not os.path.isdir(self.directory):
