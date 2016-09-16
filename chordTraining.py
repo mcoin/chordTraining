@@ -948,6 +948,17 @@ upper = \\relative c' {
 				if dbg:
 					print "Removing png file failed"
 				pass
+
+			# Remove the .preview.eps file (only the .preview.png file is needed)
+			epsFile = re.sub(r".ly", r".preview.eps", lyfile)
+			try:
+				if dbg:
+					print "Trying to remove file '%s'" % epsFile
+				os.remove(epsFile)
+			except:
+				if dbg:
+					print "Removing eps file failed"
+				pass
 		except:
 			print "Call to lilypond failed."
 					
@@ -1076,14 +1087,14 @@ class ChordTraining(wx.Frame):
 		if not self.stayOn.isEnabled():
 			self.moveMouse = False
 		
-		self.SetChord()
-		
 		# Set up the menus
 		self.InitMenus()
 		
 		# Attempt to read other settings from the savefile, in case it exists
 		self.settings.LoadSettings()
 		
+		self.SetChord()
+
 		# Set up the layout
 		self.InitUI()
 		
