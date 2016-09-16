@@ -1230,16 +1230,27 @@ class ChordTraining(wx.Frame):
 		for tone in self.pitches.keys():
 			self.tonesMenuId[tone] = wx.NewId()
 			self.tonesMenuIdRev[self.tonesMenuId[tone]] = tone
-			self.tonesMenu.Append(self.tonesMenuId[tone], tone, "", wx.ITEM_CHECK)
+			self.tonesMenu.Append(self.tonesMenuId[tone], self.conv.GetPitchName(tone), "", wx.ITEM_CHECK)
 			self.tonesMenu.Check(self.tonesMenuId[tone], self.pitches[tone])
 			self.Bind(wx.EVT_MENU, self.MenuSetTones, id=self.tonesMenuId[tone])
 			
-		self.tonesMenu.AppendSeparator()
 		self.tonesFuncId = {\
 						"all" : wx.NewId(),\
 						"none" : wx.NewId(),\
-						"invert" : wx.NewId()\
+						"invert" : wx.NewId(),\
+						"1-3" : wx.NewId(),\
+						"4-6" : wx.NewId(),\
+						"7-9" : wx.NewId(),\
+						"10-12" : wx.NewId(),\
+						"1-4" : wx.NewId(),\
+						"5-8" : wx.NewId(),\
+						"9-12" : wx.NewId(),\
+						"1-6" : wx.NewId(),\
+						"7-12" : wx.NewId()\
 						}
+
+		self.tonesMenu.AppendSeparator()
+
 		self.tonesMenu.Append(self.tonesFuncId["all"], "All")
 		self.Bind(wx.EVT_MENU, self.MenuSetTones, id=self.tonesFuncId["all"])
 		self.tonesMenu.Append(self.tonesFuncId["none"], "None")
@@ -1247,6 +1258,33 @@ class ChordTraining(wx.Frame):
 		self.tonesMenu.Append(self.tonesFuncId["invert"], "Invert")
 		self.Bind(wx.EVT_MENU, self.MenuSetTones, id=self.tonesFuncId["invert"])
 					
+		self.tonesMenu.AppendSeparator()
+
+		self.tonesMenu.Append(self.tonesFuncId["1-3"], "1-3")
+		self.Bind(wx.EVT_MENU, self.MenuSetTones, id=self.tonesFuncId["1-3"])
+		self.tonesMenu.Append(self.tonesFuncId["4-6"], "4-6")
+		self.Bind(wx.EVT_MENU, self.MenuSetTones, id=self.tonesFuncId["4-6"])
+		self.tonesMenu.Append(self.tonesFuncId["7-9"], "7-9")
+		self.Bind(wx.EVT_MENU, self.MenuSetTones, id=self.tonesFuncId["7-9"])
+		self.tonesMenu.Append(self.tonesFuncId["10-12"], "10-12")
+		self.Bind(wx.EVT_MENU, self.MenuSetTones, id=self.tonesFuncId["10-12"])
+					
+		self.tonesMenu.AppendSeparator()
+
+		self.tonesMenu.Append(self.tonesFuncId["1-4"], "1-4")
+		self.Bind(wx.EVT_MENU, self.MenuSetTones, id=self.tonesFuncId["1-4"])
+		self.tonesMenu.Append(self.tonesFuncId["5-8"], "5-8")
+		self.Bind(wx.EVT_MENU, self.MenuSetTones, id=self.tonesFuncId["5-8"])
+		self.tonesMenu.Append(self.tonesFuncId["9-12"], "9-12")
+		self.Bind(wx.EVT_MENU, self.MenuSetTones, id=self.tonesFuncId["9-12"])
+
+		self.tonesMenu.AppendSeparator()
+
+		self.tonesMenu.Append(self.tonesFuncId["1-6"], "1-6")
+		self.Bind(wx.EVT_MENU, self.MenuSetTones, id=self.tonesFuncId["1-6"])
+		self.tonesMenu.Append(self.tonesFuncId["7-12"], "7-12")
+		self.Bind(wx.EVT_MENU, self.MenuSetTones, id=self.tonesFuncId["7-12"])
+
 		menubar.Append(self.tonesMenu, '&Tones')
 
 		# Menu: QUALITIES
@@ -1576,6 +1614,87 @@ class ChordTraining(wx.Frame):
 			for tone in self.pitches.keys():
 				self.pitches[tone] = not self.pitches[tone]
 				self.tonesMenu.Check(self.tonesMenuId[tone], self.pitches[tone])
+		elif evt.GetId() == self.tonesFuncId["1-3"]:
+			index = 0
+			for tone in self.pitches.keys():
+				if index < 3:
+					self.pitches[tone] = True
+				else:
+					self.pitches[tone] = False
+				self.tonesMenu.Check(self.tonesMenuId[tone], self.pitches[tone])
+				index += 1
+		elif evt.GetId() == self.tonesFuncId["4-6"]:
+			index = 0
+			for tone in self.pitches.keys():
+				if index >= 3 and index < 6:
+					self.pitches[tone] = True
+				else:
+					self.pitches[tone] = False
+				self.tonesMenu.Check(self.tonesMenuId[tone], self.pitches[tone])
+				index += 1
+		elif evt.GetId() == self.tonesFuncId["7-9"]:
+			index = 0
+			for tone in self.pitches.keys():
+				if index >= 6 and index < 9:
+					self.pitches[tone] = True
+				else:
+					self.pitches[tone] = False
+				self.tonesMenu.Check(self.tonesMenuId[tone], self.pitches[tone])
+				index += 1
+		elif evt.GetId() == self.tonesFuncId["10-12"]:
+			index = 0
+			for tone in self.pitches.keys():
+				if index >= 9:
+					self.pitches[tone] = True
+				else:
+					self.pitches[tone] = False
+				self.tonesMenu.Check(self.tonesMenuId[tone], self.pitches[tone])
+				index += 1
+		elif evt.GetId() == self.tonesFuncId["1-4"]:
+			index = 0
+			for tone in self.pitches.keys():
+				if index < 4:
+					self.pitches[tone] = True
+				else:
+					self.pitches[tone] = False
+				self.tonesMenu.Check(self.tonesMenuId[tone], self.pitches[tone])
+				index += 1
+		elif evt.GetId() == self.tonesFuncId["5-8"]:
+			index = 0
+			for tone in self.pitches.keys():
+				if index >= 4 and index < 8:
+					self.pitches[tone] = True
+				else:
+					self.pitches[tone] = False
+				self.tonesMenu.Check(self.tonesMenuId[tone], self.pitches[tone])
+				index += 1
+		elif evt.GetId() == self.tonesFuncId["9-12"]:
+			index = 0
+			for tone in self.pitches.keys():
+				if index >= 8:
+					self.pitches[tone] = True
+				else:
+					self.pitches[tone] = False
+				self.tonesMenu.Check(self.tonesMenuId[tone], self.pitches[tone])
+				index += 1
+		elif evt.GetId() == self.tonesFuncId["1-6"]:
+			index = 0
+			for tone in self.pitches.keys():
+				if index < 6:
+					self.pitches[tone] = True
+				else:
+					self.pitches[tone] = False
+				self.tonesMenu.Check(self.tonesMenuId[tone], self.pitches[tone])
+				index += 1
+		elif evt.GetId() == self.tonesFuncId["7-12"]:
+			index = 0
+			for tone in self.pitches.keys():
+				if index >= 6:
+					self.pitches[tone] = True
+				else:
+					self.pitches[tone] = False
+				self.tonesMenu.Check(self.tonesMenuId[tone], self.pitches[tone])
+				index += 1
 		else:
 			tone = self.tonesMenuIdRev[evt.GetId()]
 			self.pitches[tone] = evt.IsChecked()
