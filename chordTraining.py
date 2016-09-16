@@ -12,8 +12,7 @@ import collections
 import re
 from subprocess import call, Popen
 import os
-from os.path import expanduser
-
+from distutils import spawn
 
 class StayOn:
 	def __init__(self):
@@ -283,13 +282,17 @@ class Chord:
 
 	def GetBaseFileName(self):
 		if self.mode == 'Chord':
-			self.fileName = "chord_" + self.GetLyPitch() + "_" + self.GetQuality() + "_res%s%s"
+			#self.fileName = "chord_" + self.GetLyPitch() + "_" + self.GetQuality() + "_res%s%s"
+			self.fileName = os.path.join("res%s", "chord_" + self.GetLyPitch() + "_" + self.GetQuality() + "%s")
 		elif self.mode == 'II-V-I':
-			self.fileName = "prog_II-V-I_" + self.GetLyPitch() + "_res%s%s"
+			#self.fileName = "prog_II-V-I_" + self.GetLyPitch() + "_res%s%s"
+			self.fileName = os.path.join("res%s", "prog_II-V-I_" + self.GetLyPitch() + "%s")
 		elif self.mode == 'II-V':
-			self.fileName = "prog_II-V_" + self.GetLyPitch() + "_res%s%s"
+			#self.fileName = "prog_II-V_" + self.GetLyPitch() + "_res%s%s"
+			self.fileName = os.path.join("res%s", "prog_II-V_" + self.GetLyPitch() + "%s")
 		elif self.mode == 'V-I':
-			self.fileName = "prog_V-I_" + self.GetLyPitch() + "_res%s%s"
+			#self.fileName = "prog_V-I_" + self.GetLyPitch() + "_res%s%s"
+			self.fileName = os.path.join("res%s", "prog_V-I_" + self.GetLyPitch() + "%s")
 		else:
 			raise
 		
@@ -303,7 +306,8 @@ class Chord:
 
 	def GetBaseScaleFileName(self):
 		self.DetermineScale()
-		self.scaleFileName = "scale_" + self.GetLyScalePitch() + "_" + self.GetScaleKind() + "_res%s%s"
+		#self.scaleFileName = "scale_" + self.GetLyScalePitch() + "_" + self.GetScaleKind() + "_res%s%s"
+		self.scaleFileName = os.path.join("res%s", "scale_" + self.GetLyScalePitch() + "_" + self.GetScaleKind() + "%s")
 		
 		return self.scaleFileName
 
@@ -599,8 +603,31 @@ class Settings():
 class Score:
 	def __init__(self, directory):
 		self.directory = directory
+		self.lilypond = "lilypond"
 		
-	def GenerateImage(self, chord, scoreRes):
+		# Path the lilypond exe needed to generate score images
+		try:
+			self.lilypond = spawn.find_executable("lilypond")
+			# Special case for windows
+ 			if self.lilypond is None and os.name == 'nt':
+				self.lilypond = os.path.normpath(spawn.find_executable("lilypond", "c:/cygwin/bin"))
+		except:
+			self.lilypond = "lilypond"
+		
+		self.imageToolsAvailable = False
+		try:
+			from PIL import Image
+			self.imageToolsAvailable = True
+		except:
+			pass
+		
+	def IsLilypondAvailable(self):
+		return os.path.isfile(self.lilypond)
+	
+	def AreImageToolsAvailable(self):
+		return self.imageToolsAvailable
+	
+	def GenerateImage(self, chord, scoreRes, singleThread, overwrite = False):
 		basisHeader = '''
 #(set-default-paper-size "a4")
 
@@ -717,6 +744,11 @@ lower = \\relative c {
 			raise
 		
 		lyfile = os.path.join(self.directory, lyfile)
+		
+		# Only if the target file does not yet exist
+		if not overwrite and os.path.isfile(re.sub(r"\.ly", r".preview.png", lyfile)):
+			return
+		
 		f = open(lyfile, "w")
 				
 		if chord.GetMode() == 'Chord':
@@ -765,7 +797,15 @@ lower = \\relative c {
 			elif chord.GetQuality() == "dim7":
 				content = re.sub(r"chordForm1", r"c ef gf a", content)
 				content = re.sub(r"chordForm2", r"c ef gf b", content)
-				content = re.sub(r"\\key c \\major", r"\\key %s \\major" % (chord.GetLyPitch().lower()), content)
+				indexPitch = chord.pitches.index(chord.GetPitch())
+				indexPitchCompensated = 12 - indexPitch
+				indexPitchCompensated = indexPitchCompensated % len(chord.pitches)
+				pitchCompensatedLy = chord.ConvertToLy(chord.pitches[indexPitchCompensated])
+				if pitchCompensatedLy == "Fs":
+					# Avoid very weird key signatures for F#
+					content = re.sub(r"\\key c \\major", r"\\key gf \\major", content)
+				else:
+					content = re.sub(r"\\key c \\major", r"\\key %s \\major" % (pitchCompensatedLy.lower()), content)
 			elif chord.GetQuality() == "7b9":
 				content = re.sub(r"chordForm1", r"e a bf df", content)
 				content = re.sub(r"chordForm2", r"bf df e a", content)
@@ -802,9 +842,9 @@ lower = \\relative c {
 		f.write(content)
 		f.close()
 
-		self.CallLilypond(lyfile, scoreRes)
+		self.CallLilypond(lyfile, scoreRes, singleThread)
 		
-	def GenerateScaleImage(self, chord, scoreRes):
+	def GenerateScaleImage(self, chord, scoreRes, singleThread, overwrite = False):
 		basisHeader = '''
 #(set-default-paper-size "a4")
 
@@ -856,6 +896,11 @@ upper = \\relative c' {
 			raise
 		
 		lyfile = os.path.join(self.directory, lyfile)
+
+		# Only if the target file does not yet exist
+		if not overwrite and os.path.isfile(re.sub(r"\.ly", r".preview.png", lyfile)):
+			return		
+
 		f = open(lyfile, "w")
 		
 		# Transpose if needed
@@ -864,28 +909,40 @@ upper = \\relative c' {
 		f.write(content)
 		f.close()
 
-		self.CallLilypond(lyfile, scoreRes)
+		self.CallLilypond(lyfile, scoreRes, singleThread)
 		
-	def CallLilypond(self, lyfile, scoreRes):
+	def CallLilypond(self, lyfile, scoreRes, singleThread = False):
+		dbg = False
 		try:
-			catOutputFile = os.path.join(self.directory, "cat_outputFile")
-			f = open(catOutputFile, "w")
-	
-			rc = call(["cat", lyfile], stdout=f)
-			f.close()
+			if dbg:
+				catOutputFile = os.path.join(self.directory, "cat_outputFile")
+				f = open(catOutputFile, "w")
 		
-			print "rc = %s" % rc
+				rc = call(["cat", lyfile], stdout=f)
+				f.close()
+			
+				print "rc = %s" % rc
+			
 			# The lilypond call apparently won't work properly without an explicit stdout redirection...
 			lilypondOutputFile = os.path.join(self.directory, "lilypond_outputFile")
 			f = open(lilypondOutputFile, "w")			
-			proc = Popen(["lilypond", "--png", "-dresolution=" + str(scoreRes), "-dpreview", lyfile], stdout=f, cwd=self.directory)
+			proc = Popen([self.lilypond, "--png", "-dresolution=" + str(scoreRes), "-dpreview", lyfile], stdout=f, cwd=self.directory)
 			# Do not continue after starting the lilypond process
-			# (useful on slower machines, e.g. raspberryPi 
-			if self.singleThread:
+			# (useful on slower machines, e.g. raspberryPi)
+			if singleThread:
 				proc.wait()
 				
 			f.close()
-			print "rc = %s" % rc
+			
+			if dbg:
+				print "rc = %s" % rc
+
+			# Remove the normal .png file (only the .preview.png file is needed)
+			pngFile = re.sub(r".ly", r".png", lyfile)
+			try:
+				os.remove(pngFile)
+			except:
+				pass
 		except:
 			print "Call to lilypond failed."
 					
@@ -959,6 +1016,15 @@ class ChordTraining(wx.Frame):
 		# when generating scores using lilypond
 		self.singleThread = True
 
+		# Path to file where the settings are saved		
+		home = os.path.expanduser("~")
+		self.directory = os.path.join(home, ".chord_training")
+		# Create directory in case it doesn't exist
+		if not os.path.isdir(self.directory):
+			os.makedirs(self.directory)
+		self.savefile = os.path.join(self.directory, "settings")	
+		self.settings = Settings(self)
+
 		# Default font size for chord names
 		self.fontSize = 64
 		self.fontSizes = collections.OrderedDict()
@@ -982,16 +1048,13 @@ class ChordTraining(wx.Frame):
 		self.scoreRess['300'] = False
 		self.scoreResMin = int(self.scoreRess.keys()[0])
 		self.scoreResMax = int(self.scoreRess.keys()[-1])
-		
-		# Path to file where the settings are saved		
-		home = expanduser("~")
-		self.directory = os.path.join(home, ".chord_training")
-		# Create directory in case it doesn't exist
-		if not os.path.isdir(self.directory):
-			os.makedirs(self.directory)
-		self.savefile = os.path.join(self.directory, "settings")	
-		self.settings = Settings(self)
 
+		# Make sure the subdirectory exists
+		for scoreRes in self.scoreRess.keys():
+			targetDir = os.path.join(self.directory, "res" + scoreRes)
+			if not os.path.isdir(targetDir):
+				os.mkdir(targetDir)	
+		
 		# Framework creating the needed score images for chord voicings and corresponding scales
 		self.score = Score(self.directory)
 		
@@ -1056,6 +1119,95 @@ class ChordTraining(wx.Frame):
 		
 		openFileDialog.Destroy()
 
+	def PickLilypond(self, event):		
+		lilypondDir = os.path.dirname(self.score.lilypond) 
+		lilypondProg = self.score.lilypond
+		openFileDialog = wx.FileDialog(self, "Select the location of the lilypond program", lilypondDir, lilypondProg, "*", wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+		openFileDialog.ShowModal()
+		self.score.lilypond = openFileDialog.GetPath()
+
+		# Reset the path in the menu
+		self.lilypondPathMenu.SetLabel(self.lilypondPathId, self.score.lilypond)
+		
+		# Update the availability of the option to generate the score images in the menu
+		generateScoreIsPossible = self.score.IsLilypondAvailable() and self.score.AreImageToolsAvailable()
+ 		self.settingsMenu.Enable(self.generateScoresId, generateScoreIsPossible)
+		
+		openFileDialog.Destroy()
+
+	def resizeImgCanvas(self, imgFile, canvasWidth, canvasHeight):
+		from PIL import Image
+		from math import floor
+		
+		imgOrig = Image.open(imgFile)
+		imgWidth, imgHeight = imgOrig.size
+	
+		# Center the image
+		x1 = int(floor((canvasWidth - imgWidth) / 2))
+		y1 = int(floor((canvasHeight - imgHeight) / 2))
+	
+		mode = imgOrig.mode
+		if len(mode) == 1:  # L, 1
+			bckgrnd = (255)
+		elif len(mode) == 3:  # RGB
+			bckgrnd = (255, 255, 255)
+		elif len(mode) == 4:  # RGBA, CMYK
+			bckgrnd = (255, 255, 255, 255)
+	
+		imgNew = Image.new(mode, (canvasWidth, canvasHeight), bckgrnd)
+		imgNew.paste(imgOrig, (x1, y1, x1 + imgWidth, y1 + imgHeight))
+		imgNew.save(imgFile)
+		
+	def GenerateScores(self, event):
+		# Generate images for all possible chords and scales in all available resolutions
+		from PIL import Image
+		
+		for scoreRes in self.scoreRess:
+			# Scores
+			maxWidth = 0
+			maxHeight = 0
+			imgList = []
+			for pitch in self.pitches:
+				for quality in self.qualities:
+					chord = Chord(pitch, quality, "Chord")
+					self.score.GenerateImage(chord, scoreRes, True, False)
+					imgFile = chord.GetImgName(scoreRes)
+					imgFile = os.path.join(self.directory, imgFile)
+ 					
+					imgList.append(imgFile)
+					img = Image.open(imgFile)
+					width, height = img.size
+					maxWidth = max(maxWidth, width)
+					maxHeight = max(maxHeight, height)
+ 					
+			for imgFile in imgList:
+				self.resizeImgCanvas(imgFile, maxWidth, maxHeight)
+			
+			# Scales
+			maxWidth = 0
+			maxHeight = 0
+			imgList = []
+			qualities = ["Maj7", "minMaj7", "dim7"] # Qualities leading to the generation of all possible scales (Major, Minor, Diminished)
+			for pitch in self.pitches:
+				for quality in qualities:
+					# For the diminished scale, only a subset of all possibilities is needed
+					if quality == "dim7" and self.pitches.keys().index(pitch) != self.pitches.keys().index(pitch) % 3:
+						continue
+					chord = Chord(pitch, quality, "Chord")
+					self.score.GenerateScaleImage(chord, scoreRes, True, False)
+					imgFile = chord.GetScaleImgName(scoreRes)
+					imgFile = os.path.join(self.directory, imgFile)
+					
+					imgList.append(imgFile)
+					img = Image.open(imgFile)
+					width, height = img.size
+					maxWidth = max(maxWidth, width)
+					maxHeight = max(maxHeight, height)
+					
+			for imgFile in imgList:
+				self.resizeImgCanvas(imgFile, maxWidth, maxHeight)
+					
+			
 	def UpdateFontSize(self):
 		if self.fontSize != self.fontSizeOld:
 			self.font = wx.Font(self.fontSize, wx.SWISS, wx.NORMAL, wx.NORMAL)
@@ -1104,9 +1256,9 @@ class ChordTraining(wx.Frame):
 			# - there is a proper chord
 			# - the score is enabled
 			if imageMode == "Chord" and currChord.GetPitch() != "-" and self.displayScore:
-				self.score.GenerateImage(currChord, self.scoreRes)
+				self.score.GenerateImage(currChord, self.scoreRes, self.singleThread)
 			elif imageMode == "Scale" and currChord.GetPitch() != "-" and self.displayScale:
-				self.score.GenerateScaleImage(currChord, self.scoreRes)
+				self.score.GenerateScaleImage(currChord, self.scoreRes, self.singleThread)
 				
 		if imageMode == "Chord":		
 			self.chordImage.SetBitmap(png)
@@ -1193,10 +1345,13 @@ class ChordTraining(wx.Frame):
 		# Menu: FILE
 		fileMenu = wx.Menu()
 
+		wx.ID_PAUSE = wx.NewId()
+		fileMenu.Append(wx.ID_PAUSE, '&Pause')
 		fileMenu.Append(wx.ID_OPEN, '&Open')
 		fileMenu.Append(wx.ID_SAVE, '&Save')
-		fileMenu.Append(wx.ID_SAVEAS, '&Save as...')
+		fileMenu.Append(wx.ID_SAVEAS, 'Save &as...')
 			
+		self.Bind(wx.EVT_MENU, self.TogglePause, id=wx.ID_PAUSE)
 		self.Bind(wx.EVT_MENU, self.LoadFile, id=wx.ID_OPEN)
 		self.Bind(wx.EVT_MENU, self.settings.SaveSettings, id=wx.ID_SAVE)
 		self.Bind(wx.EVT_MENU, self.SaveFile, id=wx.ID_SAVEAS)
@@ -1381,17 +1536,27 @@ class ChordTraining(wx.Frame):
 		self.settingsMenu.AppendMenu(wx.ID_ANY, '&Font size', self.fontSizeMenu)
 		self.settingsMenu.AppendMenu(wx.ID_ANY, '&Score resolution', self.scoreResMenu)
 
-		lilypondPathMenu = wx.Menu()
-		lilypondPathId = wx.NewId()
-		pathToLilypond = "test"
-		lilypondPathMenu.Append(lilypondPathId, "%s" % pathToLilypond)
-		lilypondPathMenu.Enable(lilypondPathId, False)
-		lilypondPathMenu.AppendSeparator()
+		self.lilypondPathMenu = wx.Menu()
+		self.lilypondPathId = wx.NewId()
+		pathToLilypond = self.score.lilypond
+		self.lilypondPathMenu.Append(self.lilypondPathId, "%s" % pathToLilypond)
+		self.lilypondPathMenu.Enable(self.lilypondPathId, False)
+		self.lilypondPathMenu.AppendSeparator()
 		editLilypondPathId = wx.NewId()
-		lilypondPathMenu.Append(editLilypondPathId, "Edit...")
+		self.lilypondPathMenu.Append(editLilypondPathId, "&Select...")
+		
+		self.Bind(wx.EVT_MENU, self.PickLilypond, id=editLilypondPathId)
 
-		self.settingsMenu.AppendMenu(wx.ID_ANY, '&Path to Lilypond', lilypondPathMenu)
+		self.settingsMenu.AppendMenu(wx.ID_ANY, '&Path to Lilypond', self.lilypondPathMenu)
 
+		self.settingsMenu.AppendSeparator()
+		self.generateScoresId = wx.NewId()
+		self.settingsMenu.Append(self.generateScoresId, "&Generate Score images")
+		generateScoreIsPossible =  self.score.AreImageToolsAvailable() and self.score.IsLilypondAvailable()
+ 		self.settingsMenu.Enable(self.generateScoresId, generateScoreIsPossible)
+
+		self.Bind(wx.EVT_MENU, self.GenerateScores, id=self.generateScoresId)
+		
 		menubar.Append(self.settingsMenu, '&Settings')
 
 		self.SetMenuBar(menubar)
@@ -1530,7 +1695,7 @@ class ChordTraining(wx.Frame):
 		hboxImg2.Add(self.scaleImage, 1, wx.EXPAND|wx.ALL, 10) # add image
 		hboxImg2.Add(hSpacer, 0, wx.EXPAND|wx.ALL,10)
 		self.layout.Add(hboxImg2, 0, wx.EXPAND)
-		self.layout.Add(vSpacer)		
+		self.layout.Add(vSpacer)
 
 		# Status bar
 		self.status = wx.StaticText(self,label="")#,style=wx.BORDER_DOUBLE)
@@ -1800,21 +1965,24 @@ class ChordTraining(wx.Frame):
 		self.settings.SaveSettings()
 		self.Close()
 
+	def TogglePause(self, e):
+		self.pause = not self.pause
+		pauseLabel = "(Paused)"
+		if self.pause:
+			self.timer.Stop()
+			label = pauseLabel
+		else:
+			self.timer.Start(self.refreshPeriod)  # milliseconds
+			label = ""
+		self.status.SetLabel(label)
+
 	def OnKeyDown(self, e):
 		key = e.GetKeyCode()
 
 		if key == wx.WXK_ESCAPE:
 			self.OnQuit(e)
 		elif key == wx.WXK_SPACE:
-			self.pause = not self.pause
-			pauseLabel = "(Paused)"
-			if self.pause:
-				self.timer.Stop()
-				label = pauseLabel
-			else:
-				self.timer.Start(self.refreshPeriod)  # milliseconds
-				label = ""
-			self.status.SetLabel(label)
+			self.TogglePause(e)
 	
 	def AvailablePitches(self):
 		list = []
