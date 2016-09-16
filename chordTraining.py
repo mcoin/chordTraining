@@ -925,8 +925,9 @@ upper = \\relative c' {
 			
 			# The lilypond call apparently won't work properly without an explicit stdout redirection...
 			lilypondOutputFile = os.path.join(self.directory, "lilypond_outputFile")
-			f = open(lilypondOutputFile, "w")			
-			proc = Popen([self.lilypond, "--png", "-dresolution=" + str(scoreRes), "-dpreview", lyfile], stdout=f, cwd=self.directory)
+			f = open(lilypondOutputFile, "w")
+			wdir = os.path.join(self.directory, "res" + str(scoreRes))
+			proc = Popen([self.lilypond, "--png", "-dresolution=" + str(scoreRes), "-dpreview", lyfile], stdout=f, cwd=wdir)
 			# Do not continue after starting the lilypond process
 			# (useful on slower machines, e.g. raspberryPi)
 			if singleThread:
@@ -940,8 +941,12 @@ upper = \\relative c' {
 			# Remove the normal .png file (only the .preview.png file is needed)
 			pngFile = re.sub(r".ly", r".png", lyfile)
 			try:
+				if dbg:
+					print "Trying to remove file '%s'" % pngFile
 				os.remove(pngFile)
 			except:
+				if dbg:
+					print "Removing png file failed"
 				pass
 		except:
 			print "Call to lilypond failed."
