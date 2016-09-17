@@ -921,15 +921,15 @@ upper = \\NotesWithKeyboard \\relative c' {
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % LSR workaround:
 #(set! paper-alist (cons '("snippet" . (cons (* 190 mm) (* 155 mm))) paper-alist))
-\paper {
+\\paper {
   #(set-paper-size "snippet")
   tagline = ##f
   indent = 0
 }
-\markup\vspace #1
+\\markup\\vspace #1
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%\language "deutsch"
+%\\language "deutsch"
 
 %% often people think that the black keys are centered to the white keys
 %% even in piano teaching books keyboards are drawn this way
@@ -1151,19 +1151,19 @@ complete-keyboard-two-octaves=
 NotesWithKeyboard=
 #(define-music-function (parser location the-chord)
   (ly:music?)
-  #{ <>^\markup \complete #the-chord $the-chord #})
+  #{ <>^\\markup \\complete #the-chord $the-chord #})
 
 
-%notes = \relative { c' d e f g a b c}
+%notes = \\relative { c' d e f g a b c}
 %
-%notess = \transpose c f \notes
+%notess = \\transpose c f \\notes
 %
-%\score {
+%\\score {
 %  <<
-%%    \new Staff \NotesWithKeyboard \chordmode { b:7sus4 }
-%%    \new Staff \NotesWithKeyboard \relative { c' d e f g a b c}
-%    \new Staff \NotesWithKeyboard \notess
-%%    \new ChordNames \chordmode { b:sus4 }
+%%    \\new Staff \\NotesWithKeyboard \\chordmode { b:7sus4 }
+%%    \\new Staff \\NotesWithKeyboard \\relative { c' d e f g a b c}
+%    \\new Staff \\NotesWithKeyboard \\notess
+%%    \\new ChordNames \\chordmode { b:sus4 }
 %  >>
 %}		
 		'''
