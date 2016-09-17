@@ -1738,12 +1738,16 @@ class ChordTraining(wx.Frame):
 			self.Bind(wx.EVT_MENU, self.MenuSetQualities, id=self.qualitiesMenuId[quality])
 			self.qualitiesMenu.Enable(self.qualitiesMenuId[quality], self.modes['Chord'])
 				
-		self.qualitiesMenu.AppendSeparator()
 		self.qualitiesFuncId = {\
 						"maj" : wx.NewId(),\
 						"min" : wx.NewId(),\
-						"dim" : wx.NewId()\
+						"dim" : wx.NewId(),\
+						"all" : wx.NewId(),\
+						"none" : wx.NewId()\
 						}
+
+		self.qualitiesMenu.AppendSeparator()
+
 		self.qualitiesMenu.Append(self.qualitiesFuncId["maj"], "Major")
 		self.Bind(wx.EVT_MENU, self.MenuSetQualities, id=self.qualitiesFuncId["maj"])
 		self.qualitiesMenu.Append(self.qualitiesFuncId["min"], "Minor")
@@ -1751,6 +1755,14 @@ class ChordTraining(wx.Frame):
 		self.qualitiesMenu.Append(self.qualitiesFuncId["dim"], "Diminished")
 		self.Bind(wx.EVT_MENU, self.MenuSetQualities, id=self.qualitiesFuncId["dim"])
 					
+		self.qualitiesMenu.AppendSeparator()
+
+		self.qualitiesMenu.Append(self.qualitiesFuncId["all"], "All")
+		self.Bind(wx.EVT_MENU, self.MenuSetQualities, id=self.qualitiesFuncId["all"])
+		self.qualitiesMenu.Append(self.qualitiesFuncId["none"], "None")
+		self.Bind(wx.EVT_MENU, self.MenuSetQualities, id=self.qualitiesFuncId["none"])
+
+		
 		menubar.Append(self.qualitiesMenu, '&Qualities')
 			
 		# Menu: DURATION
@@ -2176,6 +2188,14 @@ class ChordTraining(wx.Frame):
 					self.qualities[quality] = True
 				else:
 					self.qualities[quality] = False
+				self.qualitiesMenu.Check(self.qualitiesMenuId[quality], self.qualities[quality])
+		elif evt.GetId() == self.qualitiesFuncId["all"]:
+			for quality in self.qualities.keys():
+				self.qualities[quality] = True
+				self.qualitiesMenu.Check(self.qualitiesMenuId[quality], self.qualities[quality])
+		elif evt.GetId() == self.qualitiesFuncId["none"]:
+			for quality in self.qualities.keys():
+				self.qualities[quality] = False
 				self.qualitiesMenu.Check(self.qualitiesMenuId[quality], self.qualities[quality])
 		else:
 			quality = self.qualitiesMenuIdRev[evt.GetId()]
