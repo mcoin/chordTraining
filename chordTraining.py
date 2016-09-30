@@ -782,6 +782,14 @@ lower = \\relative c {
 					content = re.sub(r"chordForm1", r"ff af bf ef", content)
 					content = re.sub(r"chordForm2", r"bf ef ff af", content)
 					content = re.sub(r"\\key c \\major", r"\\key df \\melodicMinor", content)
+				if chord.GetPitch() == 'G' or \
+				chord.GetPitch() == 'Ab' or \
+				chord.GetPitch() == 'A' or \
+				chord.GetPitch() == 'Bb' or \
+				chord.GetPitch() == 'B':
+					# Avoid large number of ledger notes for higher pitches
+					content = re.sub(r"relative c ", r"relative c, ", content)
+					content = re.sub(r"relative c' ", r"relative c ", content)
 			elif chord.GetQuality() == "min7b5":
 				if chord.GetPitch() == 'Db' or \
 				chord.GetPitch() == 'Eb' or \
@@ -809,7 +817,15 @@ lower = \\relative c {
 			elif chord.GetQuality() == "7b9":
 				content = re.sub(r"chordForm1", r"e a bf df", content)
 				content = re.sub(r"chordForm2", r"bf df e a", content)
-				content = re.sub(r"\\key c \\major", r"\\key %s \\major" % (chord.GetLyPitch().lower()), content)
+				indexPitch = chord.pitches.index(chord.GetPitch())
+				indexPitchCompensated = 12 - indexPitch
+				indexPitchCompensated = indexPitchCompensated % len(chord.pitches)
+				pitchCompensatedLy = chord.ConvertToLy(chord.pitches[indexPitchCompensated])
+				if pitchCompensatedLy == "Fs":
+					# Avoid very weird key signatures for F#
+					content = re.sub(r"\\key c \\major", r"\\key gf \\major", content)
+				else:
+					content = re.sub(r"\\key c \\major", r"\\key %s \\major" % (pitchCompensatedLy.lower()), content)
 			else:
 				# TODO: Other qualities not yet implemented...
 				content = re.sub(r"chordForm1", r"c e g", content)
