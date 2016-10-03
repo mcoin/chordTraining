@@ -144,7 +144,8 @@ class Settings():
                 first = False
                 
         # The duration should be an integer value between durationMin and durationMax
-        if (self.chordTraining.duration < self.chordTraining.durationMin or self.chordTraining.duration > self.chordTraining.durationMax):
+        if (self.chordTraining.duration < self.chordTraining.durationMin or \
+            self.chordTraining.duration > self.chordTraining.durationMax):
             self.chordTraining.duration = int((self.chordTraining.durationMax - self.chordTraining.durationMin) / 2 + 1)
             
         # Check that the given font size is legal
@@ -185,7 +186,8 @@ class Settings():
             self.chordTraining.modeMenu.Check(self.chordTraining.modeMenuId[mode], self.chordTraining.modes[mode])
             
         for quality in self.chordTraining.qualities.keys():
-            self.chordTraining.qualitiesMenu.Check(self.chordTraining.qualitiesMenuId[quality], self.chordTraining.qualities[quality])
+            self.chordTraining.qualitiesMenu.Check(self.chordTraining.qualitiesMenuId[quality], \
+                                                   self.chordTraining.qualities[quality])
 
         try:
             self.chordTraining.durationMenu.Check(self.chordTraining.durationMenuId[self.chordTraining.duration], True)

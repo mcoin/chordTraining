@@ -1,3 +1,8 @@
+from distutils import spawn
+from subprocess import call, Popen
+import os
+import re
+
 class Score:
     def __init__(self, directory):
         self.directory = directory
@@ -6,9 +11,16 @@ class Score:
         # Path the lilypond exe needed to generate score images
         try:
             self.lilypond = spawn.find_executable("lilypond")
-            # Special case for windows
-            if self.lilypond is None and os.name == 'nt':
-                self.lilypond = os.path.normpath(spawn.find_executable("lilypond", "c:/cygwin/bin"))
+            # Special cases for windows and mac
+            if self.lilypond is None:
+                if os.name == 'nt':
+                    self.lilypond = os.path.normpath(spawn.find_executable("lilypond", "c:/cygwin/bin"))
+                elif os.name == 'posix':
+                    import platform
+                    if platform.system() == "Darwin":
+                        path = os.environ['PATH']
+                        path += ":/opt/local/bin/"
+                        self.lilypond = os.path.normpath(spawn.find_executable("lilypond", path))
         except:
             self.lilypond = "lilypond"
         
