@@ -16,13 +16,18 @@ from distutils import spawn
 
 class StayOn:
 	def __init__(self):
+		self.pyMouseEnabled = False
+		# Disable import of pymouse for debug purposes 
+		# (makes startup extremely slow)
+		if "DISABLE_STAYON" in os.environ:
+			return
+	 
 		# Use the PyMouse framework to move the mouse periodically
 		try:
 			from pymouse import PyMouse
 			self.pyMouseEnabled = True
 		except:
 			# Give up in case the PyMouse framework cannot be found
-			self.pyMouseEnabled = False
 			return
 
 		# Total time elapsed since the mouse was last moved to avoid letting the screensavec start
@@ -137,6 +142,18 @@ class Chord:
 	def GetPitch(self):
 		return self.pitch
 	
+	def GetPreviousPitchAlongCircleOfFifths(self):
+		
+		# Dbg
+		if self.pitch not in self.pitches:
+			pass
+		index = self.pitches.index(self.pitch)
+		prevIndex = index - 1
+		
+		dbg = self.pitches[prevIndex]
+		
+		return self.pitches[prevIndex]
+		
 	def ConvertToLy(self, pitch):
 		lyPitch = pitch
 		lyPitch = re.sub(r"(.)b", r"\1f", lyPitch)
@@ -181,29 +198,7 @@ class Chord:
 		self.updateScale = True
 
 	def GetName(self):
-		if self.mode == 'Chord':
-			self.name = self.conv.GetPitchName(self.pitch) + self.conv.GetQualityName(self.quality)
-		elif self.mode == 'II-V-I' or self.mode == 'II-V' or self.mode == 'V-I':
-			try:
-				indexPitch = self.pitches.index(self.pitch)
-			except:
-				return '- -'
-			progression = ''
-			
-			if self.mode == 'II-V-I' or self.mode == 'II-V':
-				indexIIpitch = indexPitch - 2
-				IIpitch = self.pitches[indexIIpitch]
-				progression += self.conv.GetPitchName(IIpitch) + self.conv.GetQualityName('min7') + '\n'
-			
-			indexVpitch = indexPitch - 1
-			Vpitch = self.pitches[indexVpitch]	
-			progression += self.conv.GetPitchName(Vpitch) + self.conv.GetQualityName('7')
-			if self.mode != 'II-V':
-				progression += '\n' + self.conv.GetPitchName(self.pitch) + self.conv.GetQualityName('Maj7')
-			
-			self.name = progression
-		else:
-			self.name = "<Unknown mode>"
+		self.name = self.conv.GetPitchName(self.pitch) + self.conv.GetQualityName(self.quality)
 			
 		return self.name
 
@@ -212,89 +207,68 @@ class Chord:
 			return
 		self.updateScale = False
 		
-		if self.mode == 'Chord':
-			if self.quality == 'Maj7' or self.quality == '7' or self.quality == 'min7':
-				if self.quality == 'Maj7':
-					self.scalePitch = self.pitch
-					self.scaleKind = "Major"
-				elif self.quality == '7':
-					indexVpitch = self.pitches.index(self.pitch)
-					indexPitch = indexVpitch + 1
-					if indexPitch >= len(self.pitches): 
-						indexPitch -= len(self.pitches)
-					self.scalePitch = self.pitches[indexPitch]
-					self.scaleKind = "Major"
-				elif self.quality == 'min7':
-					indexIIpitch = self.pitches.index(self.pitch)
-					indexPitch = indexIIpitch + 2
-					if indexPitch >= len(self.pitches): 
-						indexPitch -= len(self.pitches)
-					self.scalePitch = self.pitches[indexPitch]
-					self.scaleKind = "Major"
-			elif self.quality == 'minMaj7' or self.quality == 'alt' or self.quality == 'min7b5':
-				if self.quality == 'minMaj7':
-					self.scalePitch = self.pitch
-					self.scaleKind = "Minor"
-				elif self.quality == 'alt':
-					indexVpitch = self.pitches.index(self.pitch)
-					indexPitch = indexVpitch + 5 
-					if indexPitch >= len(self.pitches): 
-						indexPitch -= len(self.pitches)
-					self.scalePitch = self.pitches[indexPitch]
-					self.scaleKind = "Minor"
-				elif self.quality == 'min7b5':
-					indexIIpitch = self.pitches.index(self.pitch)
-					indexPitch = indexIIpitch + 3
-					if indexPitch >= len(self.pitches): 
-						indexPitch -= len(self.pitches)
-					self.scalePitch = self.pitches[indexPitch]
-					self.scaleKind = "Minor"
-			elif (self.quality == 'dim7'):
-				index = self.pitches.index(self.pitch) % 3
-				self.scalePitch = self.pitches[index]
-				self.scaleKind = "Diminished"
-			elif (self.quality == '7b9'):
-				indexPitch = self.pitches.index(self.pitch) + 2
+		if self.quality == 'Maj7' or self.quality == '7' or self.quality == 'min7':
+			if self.quality == 'Maj7':
+				self.scalePitch = self.pitch
+				self.scaleKind = "Major"
+			elif self.quality == '7':
+				indexVpitch = self.pitches.index(self.pitch)
+				indexPitch = indexVpitch + 1
 				if indexPitch >= len(self.pitches): 
 					indexPitch -= len(self.pitches)
-				indexPitch = indexPitch % 3
 				self.scalePitch = self.pitches[indexPitch]
-				self.scaleKind = "Diminished"
-			else:
-				self.scaleKind = "-"
-				self.scalePitch = self.pitch if self.pitch is not None else "-"
-
-			if self.scalePitch is None or self.scaleKind is None:
-				self.scale = "-"
-			else:
-				self.scale = self.scalePitch + " " + self.scaleKind
-				
-		elif self.mode == 'II-V-I' or self.mode == 'II-V' or self.mode == 'V-I':
-			self.scalePitch = self.pitch
-			self.scaleKind = "Major"
-			self.scale = self.scalePitch + " " + self.scaleKind
+				self.scaleKind = "Major"
+			elif self.quality == 'min7':
+				indexIIpitch = self.pitches.index(self.pitch)
+				indexPitch = indexIIpitch + 2
+				if indexPitch >= len(self.pitches): 
+					indexPitch -= len(self.pitches)
+				self.scalePitch = self.pitches[indexPitch]
+				self.scaleKind = "Major"
+		elif self.quality == 'minMaj7' or self.quality == 'alt' or self.quality == 'min7b5':
+			if self.quality == 'minMaj7':
+				self.scalePitch = self.pitch
+				self.scaleKind = "Minor"
+			elif self.quality == 'alt':
+				indexVpitch = self.pitches.index(self.pitch)
+				indexPitch = indexVpitch + 5 
+				if indexPitch >= len(self.pitches): 
+					indexPitch -= len(self.pitches)
+				self.scalePitch = self.pitches[indexPitch]
+				self.scaleKind = "Minor"
+			elif self.quality == 'min7b5':
+				indexIIpitch = self.pitches.index(self.pitch)
+				indexPitch = indexIIpitch + 3
+				if indexPitch >= len(self.pitches): 
+					indexPitch -= len(self.pitches)
+				self.scalePitch = self.pitches[indexPitch]
+				self.scaleKind = "Minor"
+		elif (self.quality == 'dim7'):
+			index = self.pitches.index(self.pitch) % 3
+			self.scalePitch = self.pitches[index]
+			self.scaleKind = "Diminished"
+		elif (self.quality == '7b9'):
+			indexPitch = self.pitches.index(self.pitch) + 2
+			if indexPitch >= len(self.pitches): 
+				indexPitch -= len(self.pitches)
+			indexPitch = indexPitch % 3
+			self.scalePitch = self.pitches[indexPitch]
+			self.scaleKind = "Diminished"
 		else:
-			self.scale = "<Unknown mode>"
+			self.scaleKind = "-"
+			self.scalePitch = self.pitch if self.pitch is not None else "-"
 
+		if self.scalePitch is None or self.scaleKind is None:
+			self.scale = "-"
+		else:
+			self.scale = self.scalePitch + " " + self.scaleKind
+			
 	def GetScale(self):
 		self.DetermineScale()			
 		return self.conv.GetPitchName(self.scalePitch) + " " + self.scaleKind
 
 	def GetBaseFileName(self):
-		if self.mode == 'Chord':
-			#self.fileName = "chord_" + self.GetLyPitch() + "_" + self.GetQuality() + "_res%s%s"
-			self.fileName = os.path.join("res%s", "chord_" + self.GetLyPitch() + "_" + self.GetQuality() + "%s")
-		elif self.mode == 'II-V-I':
-			#self.fileName = "prog_II-V-I_" + self.GetLyPitch() + "_res%s%s"
-			self.fileName = os.path.join("res%s", "prog_II-V-I_" + self.GetLyPitch() + "%s")
-		elif self.mode == 'II-V':
-			#self.fileName = "prog_II-V_" + self.GetLyPitch() + "_res%s%s"
-			self.fileName = os.path.join("res%s", "prog_II-V_" + self.GetLyPitch() + "%s")
-		elif self.mode == 'V-I':
-			#self.fileName = "prog_V-I_" + self.GetLyPitch() + "_res%s%s"
-			self.fileName = os.path.join("res%s", "prog_V-I_" + self.GetLyPitch() + "%s")
-		else:
-			raise
+		self.fileName = os.path.join("res%s", "chord_" + self.GetLyPitch() + "_" + self.GetQuality() + "%s")
 		
 		return self.fileName
 
@@ -327,56 +301,151 @@ class ChordStack():
 		self.nbElements = self.nbFurtherItems + 1 + self.nbFurtherItems
 		# Index of the current item
 		self.curr = 0 + self.nbFurtherItems
-		# Index of the previous item
-		self.prev = self.curr - 1
-		# Index of the next item
-		self.next = self.curr + 1
 		# List of Chord objects
 		self.elements = []
 		# Dummy Chord object to return when at end of stack
 		self.dummy = Chord()
 		
 	def AddElement(self, listPitches, listQualities, currentMode):
-		""" Add an item to the stack """
-		self.elements.append(Chord())
-		# TODO: Prevent repetitions
-		self.elements[-1].GenerateRandom(listPitches, listQualities, currentMode)
+		""" Add one or more items to the stack """
+		if currentMode == 'Chord':
+			self.elements.append(Chord())
+			# TODO: Prevent repetitions
+			self.elements[-1].GenerateRandom(listPitches, listQualities, currentMode)
+			
+			nbAddedElements = 1
+			
+		elif currentMode == 'II-V-I':
+			self.elements.append(Chord())
+			self.elements.append(Chord())
+			self.elements.append(Chord())
+			# TODO: Prevent repetitions
+			self.elements[-1].GenerateRandom(listPitches, ['Maj7'], currentMode)
+			pitchV = self.elements[-1].GetPreviousPitchAlongCircleOfFifths()
+			#self.elements[-2].GenerateRandom(pitchV, ['7'], currentMode)
+			self.elements[-2].SetPitch(pitchV)
+			self.elements[-2].SetQuality('7')
+			self.elements[-2].SetMode(currentMode)
+			pitchII = self.elements[-2].GetPreviousPitchAlongCircleOfFifths()
+			#self.elements[-3].GenerateRandom(pitchII, ['min7'], currentMode)
+			self.elements[-3].SetPitch(pitchII)
+			self.elements[-3].SetQuality('min7')
+			self.elements[-3].SetMode(currentMode)
+
+			nbAddedElements = 3
+		
+		elif currentMode == 'II-V':
+			self.elements.append(Chord())
+			self.elements.append(Chord())
+			# TODO: Prevent repetitions
+			self.elements[-1].GenerateRandom(listPitches, ['Maj7'], currentMode)
+			pitchV = self.elements[-1].GetPreviousPitchAlongCircleOfFifths()
+			#self.elements[-2].GenerateRandom(pitchV, ['7'], currentMode)
+			self.elements[-1].SetPitch(pitchV)
+			self.elements[-1].SetQuality('7')
+			self.elements[-1].SetMode(currentMode)
+			pitchII = self.elements[-1].GetPreviousPitchAlongCircleOfFifths()
+			#self.elements[-3].GenerateRandom(pitchII, ['min7'], currentMode)
+			self.elements[-2].SetPitch(pitchII)
+			self.elements[-2].SetQuality('min7')
+			self.elements[-2].SetMode(currentMode)
+ 
+			nbAddedElements = 2
+ 		
+		elif currentMode == 'V-I':
+			self.elements.append(Chord())
+			self.elements.append(Chord())
+			# TODO: Prevent repetitions
+			self.elements[-1].GenerateRandom(listPitches, ['Maj7'], currentMode)
+			pitchV = self.elements[-1].GetPreviousPitchAlongCircleOfFifths()
+			#self.elements[-2].GenerateRandom(pitchV, ['7'], currentMode)
+			self.elements[-2].SetPitch(pitchV)
+			self.elements[-2].SetQuality('7')
+			self.elements[-2].SetMode(currentMode)
+ 
+			nbAddedElements = 2
+		
+		return nbAddedElements
 		
 	def Initialize(self, listPitches, listQualities, currentMode):
 		""" Allocate items according to the current definitions """
-		for i in range(0, self.nbElements):
+		while len(self.elements) < self.nbElements:
 # 			self.elements.append(Chord().GenerateRandom(listPitches, listQualities, currentMode))
 			# TODO: Prevent repetitions
 			self.AddElement(listPitches, listQualities, currentMode)
 		
 	def Next(self):
 		""" Shift indices to display the next item """
-		if self.curr < self.nbElements - 1:
+		if self.curr < len(self.elements) - 1:
 			self.curr += 1
+			return True
+		
+		return False
 		
 	def Prev(self):
 		""" Shift indices to display the previous item """
 		if self.curr > 0:
 			self.curr -= 1
+			return True
+		
+		return False
 			
-	def UpdateStack(self, listPitches, listQualities, currentMode):
-		""" Remove old elements and append new ones """
-		self.elements.pop(0)
-		# TODO: Prevent repetitions
-		self.AddElement(listPitches, listQualities, currentMode)
+	def UpdateStack(self, listPitches, listQualities, currentMode, recreating=False):
+		""" Move up the stack on updates """
+		if self.curr < self.nbElements/2 and \
+		not recreating:
+			# Just move upwards until we have reached the middle of the stack
+			self.Next()
+		else:
+			# In case we are at the middle of the stack or further up,
+			# add new chords to the stack (so that there are nbFurtherItems
+			# chords upwards) and trim the older chords at the bottom of the
+			# stack to retain nbElements in total 
+			firstAddition = True
+			while firstAddition or len(self.elements) - self.curr < self.nbFurtherItems:
+				# Ensure creation of at least one new chord in the stack
+				firstAddition = False
+				self.AddElement(listPitches, listQualities, currentMode)
+				
+# 			while len(self.elements) > self.nbElements:
+# 				self.elements.pop(0)
+
+			# Prune the chord list (keep the last nbElements)
+			nbElementsOld = len(self.elements)
+			self.elements = self.elements[-self.nbElements:]
+			nbElementsNew = len(self.elements)
+			
+			# Adjust the index of the current chord
+			self.curr -= nbElementsOld - nbElementsNew - 1
+			
+# 			# TODO: Prevent repetitions
+# 			nbAddedElements = self.AddElement(listPitches, listQualities, currentMode)
+# 			# Remove old elements and append new ones,  	
+# 			for i in range(0, nbAddedElements):
+# 				self.elements.pop(i)
+# 				
+# 			# Remove further elements so as to return to the target number
+# 			# (Switching to a progression mode (e.g. II-V-I) may lead to 
+# 			# a temporarily higher number of elements in the list)
+# 			if len(self.elements) > self.nbElements:
+# 				self.elements.pop(0)
 		
 	def RecreateNext(self, listPitches, listQualities, currentMode):
 		""" Redefine elements up the list in case of a change in properties """
 		# Remove the last elements in the list up to the next chord
-		del self.elements[self.nbFurtherItems + 1:]
+		del self.elements[self.curr + 1:]
 		# Add new elements conforming to the new prescriptions
-		for i in range(0, self.nbFurtherItems - 1):
-			# TODO: Prevent repetitions
-			self.AddElement(listPitches, listQualities, currentMode)
+# 		while len(self.elements) < self.nbElements:
+# 			# TODO: Prevent repetitions
+# 			self.AddElement(listPitches, listQualities, currentMode)
+		self.UpdateStack(listPitches, listQualities, currentMode, recreating=True)
 
 	def GetCurrent(self):
 		""" Return the current chord object """
-		return self.elements[self.curr]
+		if self.curr < len(self.elements):
+			return self.elements[self.curr]
+		else:
+			return self.dummy
 	
 	def GetPrev(self):
 		""" Return the previous chord object """
@@ -387,7 +456,7 @@ class ChordStack():
 		
 	def GetNext(self):
 		""" Return the next chord object """
-		if self.curr < self.nbElements - 1:
+		if self.curr < len(self.elements) - 1:
 			return self.elements[self.curr + 1]
 		else:
 			return self.dummy
@@ -699,49 +768,15 @@ lower = \\relative c {
   %\\midi { }
 }
 '''
-		if chord.GetMode() == 'Chord':
-			lyfile = chord.GetLyName(scoreRes)
-			content = basisHeader + \
-			basisUpperBeginning + \
-			basisUpperContentChord + \
-			basisUpperEnd + \
-			basisLowerBeginning + \
-			basisLowerContentChord + \
-			basisLowerEnd + \
-			basisFooter
-		elif chord.GetMode() == 'II-V-I':
-			lyfile = chord.GetLyName(scoreRes)
-			content = basisHeader + \
-			basisUpperBeginning + \
-			basisContentII_V_I + \
-			basisUpperEnd + \
-			basisLowerBeginning + \
-			basisContentII_V_I + \
-			basisLowerEnd + \
-			basisFooter
-		elif chord.GetMode() == 'II-V':
-			lyfile = chord.GetLyName(scoreRes)
-			content = basisHeader + \
-			basisUpperBeginning + \
-			basisContentII_V + \
-			basisUpperEnd + \
-			basisLowerBeginning + \
-			basisContentII_V + \
-			basisLowerEnd + \
-			basisFooter
-		elif chord.GetMode() == 'V-I':
-			lyfile = chord.GetLyName(scoreRes)
-			content = basisHeader + \
-			basisUpperBeginning + \
-			basisContentV_I + \
-			basisUpperEnd + \
-			basisLowerBeginning + \
-			basisContentV_I + \
-			basisLowerEnd + \
-			basisFooter
-		else:
-			# Unsupported mode
-			raise
+		lyfile = chord.GetLyName(scoreRes)
+		content = basisHeader + \
+		basisUpperBeginning + \
+		basisUpperContentChord + \
+		basisUpperEnd + \
+		basisLowerBeginning + \
+		basisLowerContentChord + \
+		basisLowerEnd + \
+		basisFooter
 		
 		lyfile = os.path.join(self.directory, lyfile)
 		
@@ -751,106 +786,85 @@ lower = \\relative c {
 		
 		f = open(lyfile, "w")
 				
-		if chord.GetMode() == 'Chord':
-			# Substitute the chord placeholder with the actual chord definition for the appropriate qualities (in C)
-			if chord.GetQuality() == "Maj7":
-				content = re.sub(r"chordForm1", r"b c e g", content)
-				content = re.sub(r"chordForm2", r"e g a d", content)
-			elif chord.GetQuality() == "7":
-				content = re.sub(r"chordForm1", r"e a bf d", content)
-				content = re.sub(r"chordForm2", r"bf d e a", content)
-				content = re.sub(r"\\key c \\major", r"\\key f \\major", content)
-			elif chord.GetQuality() == "min7":
-				content = re.sub(r"chordForm1", r"ef g bf d", content)
-				content = re.sub(r"chordForm2", r"bf d ef g", content)
-				content = re.sub(r"\\key c \\major", r"\\key bf \\major", content)
-			elif chord.GetQuality() == "minMaj7":
-				content = re.sub(r"chordForm1", r"ef g b d", content)
-				content = re.sub(r"chordForm2", r"b d ef g", content)
-				content = re.sub(r"\\key c \\major", r"\\key c \\melodicMinor", content)
-			elif chord.GetQuality() == "alt":
-				if chord.GetPitch() == 'Db' or \
-				chord.GetPitch() == 'Eb' or \
-				chord.GetPitch() == 'F' or \
-				chord.GetPitch() == 'Ab' or \
-				chord.GetPitch() == 'Bb':
-					# Avoid very weird key signatures for certain pitches
-					content = re.sub(r"chordForm1", r"e gs as ds", content)
-					content = re.sub(r"chordForm2", r"as ds e gs", content)
-					content = re.sub(r"\\key c \\major", r"\\key cs \\melodicMinor", content)
-				else:
-					content = re.sub(r"chordForm1", r"ff af bf ef", content)
-					content = re.sub(r"chordForm2", r"bf ef ff af", content)
-					content = re.sub(r"\\key c \\major", r"\\key df \\melodicMinor", content)
-				if chord.GetPitch() == 'G' or \
-				chord.GetPitch() == 'Ab' or \
-				chord.GetPitch() == 'A' or \
-				chord.GetPitch() == 'Bb' or \
-				chord.GetPitch() == 'B':
-					# Avoid large number of ledger notes for higher pitches
-					content = re.sub(r"relative c ", r"relative c, ", content)
-					content = re.sub(r"relative c' ", r"relative c ", content)
-			elif chord.GetQuality() == "min7b5":
-				if chord.GetPitch() == 'Db' or \
-				chord.GetPitch() == 'Eb' or \
-				chord.GetPitch() == 'Ab':
-					# Avoid very weird key signatures for certain pitches
-					content = re.sub(r"chordForm1", r"ds fs as css", content)
-					content = re.sub(r"chordForm2", r"as css ds fs", content)
-					content = re.sub(r"\\key c \\major", r"\\key ds \\melodicMinor", content)
-				else:
-					content = re.sub(r"chordForm1", r"ef gf bf d", content)
-					content = re.sub(r"chordForm2", r"bf d ef gf", content)
-					content = re.sub(r"\\key c \\major", r"\\key ef \\melodicMinor", content)
-			elif chord.GetQuality() == "dim7":
-				content = re.sub(r"chordForm1", r"c ef gf a", content)
-				content = re.sub(r"chordForm2", r"c ef gf b", content)
-				indexPitch = chord.pitches.index(chord.GetPitch())
-				indexPitchCompensated = 12 - indexPitch
-				indexPitchCompensated = indexPitchCompensated % len(chord.pitches)
-				pitchCompensatedLy = chord.ConvertToLy(chord.pitches[indexPitchCompensated])
-				if pitchCompensatedLy == "Fs":
-					# Avoid very weird key signatures for F#
-					content = re.sub(r"\\key c \\major", r"\\key gf \\major", content)
-				else:
-					content = re.sub(r"\\key c \\major", r"\\key %s \\major" % (pitchCompensatedLy.lower()), content)
-			elif chord.GetQuality() == "7b9":
-				content = re.sub(r"chordForm1", r"e a bf df", content)
-				content = re.sub(r"chordForm2", r"bf df e a", content)
-				indexPitch = chord.pitches.index(chord.GetPitch())
-				indexPitchCompensated = 12 - indexPitch
-				indexPitchCompensated = indexPitchCompensated % len(chord.pitches)
-				pitchCompensatedLy = chord.ConvertToLy(chord.pitches[indexPitchCompensated])
-				if pitchCompensatedLy == "Fs":
-					# Avoid very weird key signatures for F#
-					content = re.sub(r"\\key c \\major", r"\\key gf \\major", content)
-				else:
-					content = re.sub(r"\\key c \\major", r"\\key %s \\major" % (pitchCompensatedLy.lower()), content)
+		# Substitute the chord placeholder with the actual chord definition for the appropriate qualities (in C)
+		if chord.GetQuality() == "Maj7":
+			content = re.sub(r"chordForm1", r"b c e g", content)
+			content = re.sub(r"chordForm2", r"e g a d", content)
+		elif chord.GetQuality() == "7":
+			content = re.sub(r"chordForm1", r"e a bf d", content)
+			content = re.sub(r"chordForm2", r"bf d e a", content)
+			content = re.sub(r"\\key c \\major", r"\\key f \\major", content)
+		elif chord.GetQuality() == "min7":
+			content = re.sub(r"chordForm1", r"ef g bf d", content)
+			content = re.sub(r"chordForm2", r"bf d ef g", content)
+			content = re.sub(r"\\key c \\major", r"\\key bf \\major", content)
+		elif chord.GetQuality() == "minMaj7":
+			content = re.sub(r"chordForm1", r"ef g b d", content)
+			content = re.sub(r"chordForm2", r"b d ef g", content)
+			content = re.sub(r"\\key c \\major", r"\\key c \\melodicMinor", content)
+		elif chord.GetQuality() == "alt":
+			if chord.GetPitch() == 'Db' or \
+			chord.GetPitch() == 'Eb' or \
+			chord.GetPitch() == 'F' or \
+			chord.GetPitch() == 'Ab' or \
+			chord.GetPitch() == 'Bb':
+				# Avoid very weird key signatures for certain pitches
+				content = re.sub(r"chordForm1", r"e gs as ds", content)
+				content = re.sub(r"chordForm2", r"as ds e gs", content)
+				content = re.sub(r"\\key c \\major", r"\\key cs \\melodicMinor", content)
 			else:
-				# TODO: Other qualities not yet implemented...
-				content = re.sub(r"chordForm1", r"c e g", content)
-				content = re.sub(r"chordForm2", r"c e g", content)
-				scalePitch = 'C'
-		elif chord.GetMode() == 'II-V-I':
-			content = re.sub(r"IIchordForm1", r"f a c e", content)
-			content = re.sub(r"IIchordForm2", r"c e f a", content)
-			content = re.sub(r"VchordForm1", r"f a b e", content)
-			content = re.sub(r"VchordForm2", r"b, e f a", content)
-			content = re.sub(r"IchordForm1", r"e g a d", content)
-			content = re.sub(r"IchordForm2", r"b c e g", content)
-		elif chord.GetMode() == 'II-V':
-			content = re.sub(r"IIchordForm1", r"f a c e", content)
-			content = re.sub(r"IIchordForm2", r"c e f a", content)
-			content = re.sub(r"VchordForm1", r"f a b e", content)
-			content = re.sub(r"VchordForm2", r"b, e f a", content)
-		elif chord.GetMode() == 'V-I':
-			content = re.sub(r"VchordForm1", r"f a b e", content)
-			content = re.sub(r"VchordForm2", r"b e f a", content)
-			content = re.sub(r"IchordForm1", r"e g a d", content)
-			content = re.sub(r"IchordForm2", r"b c e g", content)
+				content = re.sub(r"chordForm1", r"ff af bf ef", content)
+				content = re.sub(r"chordForm2", r"bf ef ff af", content)
+				content = re.sub(r"\\key c \\major", r"\\key df \\melodicMinor", content)
+			if chord.GetPitch() == 'G' or \
+			chord.GetPitch() == 'Ab' or \
+			chord.GetPitch() == 'A' or \
+			chord.GetPitch() == 'Bb' or \
+			chord.GetPitch() == 'B':
+				# Avoid large number of ledger notes for higher pitches
+				content = re.sub(r"relative c ", r"relative c, ", content)
+				content = re.sub(r"relative c' ", r"relative c ", content)
+		elif chord.GetQuality() == "min7b5":
+			if chord.GetPitch() == 'Db' or \
+			chord.GetPitch() == 'Eb' or \
+			chord.GetPitch() == 'Ab':
+				# Avoid very weird key signatures for certain pitches
+				content = re.sub(r"chordForm1", r"ds fs as css", content)
+				content = re.sub(r"chordForm2", r"as css ds fs", content)
+				content = re.sub(r"\\key c \\major", r"\\key ds \\melodicMinor", content)
+			else:
+				content = re.sub(r"chordForm1", r"ef gf bf d", content)
+				content = re.sub(r"chordForm2", r"bf d ef gf", content)
+				content = re.sub(r"\\key c \\major", r"\\key ef \\melodicMinor", content)
+		elif chord.GetQuality() == "dim7":
+			content = re.sub(r"chordForm1", r"c ef gf a", content)
+			content = re.sub(r"chordForm2", r"c ef gf b", content)
+			indexPitch = chord.pitches.index(chord.GetPitch())
+			indexPitchCompensated = 12 - indexPitch
+			indexPitchCompensated = indexPitchCompensated % len(chord.pitches)
+			pitchCompensatedLy = chord.ConvertToLy(chord.pitches[indexPitchCompensated])
+			if pitchCompensatedLy == "Fs":
+				# Avoid very weird key signatures for F#
+				content = re.sub(r"\\key c \\major", r"\\key gf \\major", content)
+			else:
+				content = re.sub(r"\\key c \\major", r"\\key %s \\major" % (pitchCompensatedLy.lower()), content)
+		elif chord.GetQuality() == "7b9":
+			content = re.sub(r"chordForm1", r"e a bf df", content)
+			content = re.sub(r"chordForm2", r"bf df e a", content)
+			indexPitch = chord.pitches.index(chord.GetPitch())
+			indexPitchCompensated = 12 - indexPitch
+			indexPitchCompensated = indexPitchCompensated % len(chord.pitches)
+			pitchCompensatedLy = chord.ConvertToLy(chord.pitches[indexPitchCompensated])
+			if pitchCompensatedLy == "Fs":
+				# Avoid very weird key signatures for F#
+				content = re.sub(r"\\key c \\major", r"\\key gf \\major", content)
+			else:
+				content = re.sub(r"\\key c \\major", r"\\key %s \\major" % (pitchCompensatedLy.lower()), content)
 		else:
-			# Unsupported mode
-			raise
+			# TODO: Other qualities not yet implemented...
+			content = re.sub(r"chordForm1", r"c e g", content)
+			content = re.sub(r"chordForm2", r"c e g", content)
+			scalePitch = 'C'
 		
 		# Transpose if needed
 		if chord.GetPitch() != 'C':
@@ -1295,7 +1309,9 @@ class ChordTraining(wx.Frame):
 		self.duration = 5  # s
 		self.elapsedTime = 0  # ms
 		self.refreshPeriod = 50  # ms
-
+		# Indicator for manual manipulation of the chord stack
+		self.manualChange = False 
+		
 		#  Display chord/scale score by default
 		self.displayScore = True
 		self.displayScale = True
@@ -1565,27 +1581,13 @@ class ChordTraining(wx.Frame):
 		elif imageMode == "Scale":		
 			self.scaleImage.SetBitmap(png)
 					
-	def OnTimer(self, whatever):
-		if self.pause:
-			return
-		self.elapsedTime += self.refreshPeriod
-
-		# Move the mouse by one pixel so as to avoid the screensaver
-		if self.moveMouse:
-			self.stayOn.moveMouse(self.refreshPeriod/1000.)
-
-		# Update time gauge
-		value = self.elapsedTime/self.duration/1000.*100.
-		self.timeGauge.SetValue(min(value, self.timeGaugeMax))
-		
-		if self.elapsedTime <= self.duration * 1000:
-			return
-		self.elapsedTime = 0
-
+	def RefreshChord(self):
 		# Renew upcoming chords in the stack upon changes in the parameters
 		if self.changedParameters:
 			self.chordStack.RecreateNext(self.AvailablePitches(), self.AvailableQualities(), self.CurrentMode())
 			self.changedParameters = False
+			# Avoid skipping the next chord
+			self.chordStack.Prev()
 
 		# Current chord
 		currChord = self.chordStack.GetCurrent()
@@ -1617,6 +1619,66 @@ class ChordTraining(wx.Frame):
 		if self.changedLayout:
 			self.changedLayout = False
 			self.FitLayout()
+		
+	def OnTimer(self, whatever):
+		if self.pause:
+			return
+		self.elapsedTime += self.refreshPeriod
+
+		# Move the mouse by one pixel so as to avoid the screensaver
+		if self.moveMouse:
+			self.stayOn.moveMouse(self.refreshPeriod/1000.)
+
+		# Update time gauge
+		value = self.elapsedTime/self.duration/1000.*100.
+		self.timeGauge.SetValue(min(value, self.timeGaugeMax))
+		
+		if self.elapsedTime <= self.duration * 1000:
+			return
+		self.elapsedTime = 0
+		
+		# Explicitly switch to the next chord in the stack in case we have 
+		# manually changed the current chord
+		if self.manualChange:
+			self.manualChange = False
+			self.chordStack.Next()
+
+		self.RefreshChord()
+# 		# Renew upcoming chords in the stack upon changes in the parameters
+# 		if self.changedParameters:
+# 			self.chordStack.RecreateNext(self.AvailablePitches(), self.AvailableQualities(), self.CurrentMode())
+# 			self.changedParameters = False
+# 
+# 		# Current chord
+# 		currChord = self.chordStack.GetCurrent()
+# 		
+# 		# Previous and next chords
+# 		prevChord = self.chordStack.GetPrev()
+# 		nextChord = self.chordStack.GetNext()
+# 		
+# 		# Update mode
+# 		currChord.SetMode(self.CurrentMode())
+# 		prevChord.SetMode(self.CurrentMode())
+# 		nextChord.SetMode(self.CurrentMode())
+# 		
+# 		# Update chord display
+# 		self.chordDisplay.SetLabel(currChord.GetName())
+# 		self.chordDisplayPrev.SetLabel(prevChord.GetName())
+# 		self.chordDisplayNext.SetLabel(nextChord.GetName())
+# 		
+# 		# Update scale name
+# 		self.scaleName.SetLabel(currChord.GetScale())
+# 		
+# 		self.PrepareImage(currChord, "Chord")
+# 
+# 		self.PrepareImage(currChord, "Scale")
+# 
+# 		self.UpdateFontSize()
+# 			
+# 		# Reset the sizer's size (so that the text window has the right size)		
+# 		if self.changedLayout:
+# 			self.changedLayout = False
+# 			self.FitLayout()
 			
 		# TEST
 # 		mode = self.CurrentMode()
@@ -1874,8 +1936,6 @@ class ChordTraining(wx.Frame):
 		self.SetMenuBar(menubar)
 
 	def SetChord(self):
-# 		self.chord = Chord(self)
-
 		self.chordStack = ChordStack()
 		self.chordStack.Initialize(self.AvailablePitches(), self.AvailableQualities(), self.CurrentMode())
 		
@@ -2029,10 +2089,7 @@ class ChordTraining(wx.Frame):
 		mode = self.CurrentMode()
 		chord.SetMode(mode)
 		
-		if mode == 'II-V-I' or mode == 'II-V' or mode == 'V-I':
-			listQualities = ['Maj7']
-		else:
-			listQualities = self.AvailableQualities()
+		listQualities = self.AvailableQualities()
 			
 		for pitch in listPitches:
 			chord.SetPitch(pitch)
@@ -2235,6 +2292,9 @@ class ChordTraining(wx.Frame):
 		# Update the layout
 		self.changedLayout = True
 		
+		# Mark the current parameters as new, so as to renew the chord stack 
+		self.changedParameters = True		
+		
 	def MenuSetDuration(self, evt):
 		duration = self.durationMenuIdRev[evt.GetId()]
 		self.duration = duration
@@ -2296,6 +2356,30 @@ class ChordTraining(wx.Frame):
 			label = ""
 		self.status.SetLabel(label)
 
+	def NextChord(self, e):
+		# Do not explicitly call the function the first time
+		if not self.manualChange:
+			nextChordExists = True
+		else:
+			nextChordExists = self.chordStack.Next()
+		
+		if nextChordExists:
+			self.RefreshChord()
+		self.manualChange = True
+		
+	def PrevChord(self, e):
+		# Call the function twice the first time
+		if not self.manualChange:
+			self.chordStack.Prev()
+			self.chordStack.Prev()
+			prevChordExists = True
+		else:
+			prevChordExists = self.chordStack.Prev()
+
+		if prevChordExists:
+			self.RefreshChord()
+		self.manualChange = True
+
 	def OnKeyDown(self, e):
 		key = e.GetKeyCode()
 
@@ -2303,6 +2387,10 @@ class ChordTraining(wx.Frame):
 			self.OnQuit(e)
 		elif key == wx.WXK_SPACE:
 			self.TogglePause(e)
+		elif key == wx.WXK_LEFT:
+			self.PrevChord(e)
+		elif key == wx.WXK_RIGHT:
+			self.NextChord(e)
 	
 	def AvailablePitches(self):
 		list = []
