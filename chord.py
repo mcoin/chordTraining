@@ -78,9 +78,13 @@ class Chord:
         index = self.pitches.index(self.pitch)
         prevIndex = index - 1
         
-        dbg = self.pitches[prevIndex]
-        
         return self.pitches[prevIndex]
+        
+    def GetNextPitchAlongCircleOfFifths(self):
+        index = self.pitches.index(self.pitch)
+        nextIndex = (index + 1) % len(self.pitches)
+        
+        return self.pitches[nextIndex]
         
     def ConvertToLy(self, pitch):
         lyPitch = pitch
@@ -109,7 +113,7 @@ class Chord:
     def GetMode(self):
         return self.mode
     
-    def GenerateRandom(self, listPitches, listQualities, currentMode):
+    def GenerateRandom(self, listPitches, listQualities, currentMode, chordToAvoid=None):
         self.SetMode(currentMode)
         
         if len(listPitches) == 0 or len(listQualities) == 0:
@@ -117,12 +121,18 @@ class Chord:
             self.SetQuality("-")
             return
 
-        pitch = random.choice(listPitches)
-        self.SetPitch(pitch)
-        
-        quality = random.choice(listQualities)
-        self.SetQuality(quality)
-
+        suitableChord = False
+        while not suitableChord:
+            pitch = random.choice(listPitches)
+            self.SetPitch(pitch)
+            
+            quality = random.choice(listQualities)
+            self.SetQuality(quality)
+            
+            if len(listPitches) * len(listQualities) < 2 or \
+            self.GetName() != chordToAvoid:
+                suitableChord = True            
+            
         self.updateScale = True
 
     def GetName(self):
@@ -233,71 +243,90 @@ class ChordStack():
         # Dummy Chord object to return when at end of stack
         self.dummy = Chord()
         
+    def LookForChordToAvoid(self, indices, convertVtoI=False):
+        """ Check whether the same chord has been generated twice in a row already """
+        if len(indices) != 2:
+            return None
+        
+        maxIndex = 0
+        for index in indices:
+            maxIndex = max(maxIndex, abs(index))
+            
+        if len(self.elements) >= maxIndex:
+            prevChord = self.elements[indices[0]].GetName()
+            if self.elements[indices[1]].GetName() == prevChord:
+                if convertVtoI:
+                    # Return the corresponding major chord instead
+                    Vchord = self.elements[indices[0]]
+                    pitch = self.elements[indices[0]].GetNextPitchAlongCircleOfFifths()
+                    IchordName = Vchord.conv.GetPitchName(pitch) + Vchord.conv.GetQualityName("Maj7")
+                    return IchordName
+                else:
+                    return prevChord
+            
+        return None
+        
     def AddElement(self, listPitches, listQualities, currentMode):
         """ Add one or more items to the stack """
         if currentMode == 'Chord':
-            self.elements.append(Chord())
-            # TODO: Prevent repetitions
-            self.elements[-1].GenerateRandom(listPitches, listQualities, currentMode)
+            chordToAvoid = self.LookForChordToAvoid([-1, -2])
             
-            nbAddedElements = 1
+            self.elements.append(Chord())
+            self.elements[-1].GenerateRandom(listPitches, listQualities, currentMode, chordToAvoid)
             
         elif currentMode == 'II-V-I':
+            chordToAvoid = self.LookForChordToAvoid([-3, -6])
+
             self.elements.append(Chord())
             self.elements.append(Chord())
             self.elements.append(Chord())
-            # TODO: Prevent repetitions
-            self.elements[-1].GenerateRandom(listPitches, ['Maj7'], currentMode)
-            pitchV = self.elements[-1].GetPreviousPitchAlongCircleOfFifths()
-            #self.elements[-2].GenerateRandom(pitchV, ['7'], currentMode)
+            
+            self.elements[-1].GenerateRandom(listPitches, ['Maj7'], currentMode, chordToAvoid)
+            
+            pitchV = self.elements[-1].GetPreviousPitchAlongCircleOfFifths()            
             self.elements[-2].SetPitch(pitchV)
             self.elements[-2].SetQuality('7')
             self.elements[-2].SetMode(currentMode)
+            
             pitchII = self.elements[-2].GetPreviousPitchAlongCircleOfFifths()
-            #self.elements[-3].GenerateRandom(pitchII, ['min7'], currentMode)
             self.elements[-3].SetPitch(pitchII)
             self.elements[-3].SetQuality('min7')
             self.elements[-3].SetMode(currentMode)
 
-            nbAddedElements = 3
-        
         elif currentMode == 'II-V':
+            chordToAvoid = self.LookForChordToAvoid([-1, -3], convertVtoI=True)
+
             self.elements.append(Chord())
             self.elements.append(Chord())
-            # TODO: Prevent repetitions
-            self.elements[-1].GenerateRandom(listPitches, ['Maj7'], currentMode)
+           
+            self.elements[-1].GenerateRandom(listPitches, ['Maj7'], currentMode, chordToAvoid)
+            
             pitchV = self.elements[-1].GetPreviousPitchAlongCircleOfFifths()
-            #self.elements[-2].GenerateRandom(pitchV, ['7'], currentMode)
             self.elements[-1].SetPitch(pitchV)
             self.elements[-1].SetQuality('7')
             self.elements[-1].SetMode(currentMode)
+            
             pitchII = self.elements[-1].GetPreviousPitchAlongCircleOfFifths()
-            #self.elements[-3].GenerateRandom(pitchII, ['min7'], currentMode)
             self.elements[-2].SetPitch(pitchII)
             self.elements[-2].SetQuality('min7')
             self.elements[-2].SetMode(currentMode)
  
-            nbAddedElements = 2
-         
         elif currentMode == 'V-I':
+            chordToAvoid = self.LookForChordToAvoid([-1, -3])
+
             self.elements.append(Chord())
             self.elements.append(Chord())
-            # TODO: Prevent repetitions
-            self.elements[-1].GenerateRandom(listPitches, ['Maj7'], currentMode)
+           
+            self.elements[-1].GenerateRandom(listPitches, ['Maj7'], currentMode, chordToAvoid)
+            
             pitchV = self.elements[-1].GetPreviousPitchAlongCircleOfFifths()
-            #self.elements[-2].GenerateRandom(pitchV, ['7'], currentMode)
             self.elements[-2].SetPitch(pitchV)
             self.elements[-2].SetQuality('7')
             self.elements[-2].SetMode(currentMode)
- 
-            nbAddedElements = 2
-        
-        return nbAddedElements
-        
+
     def Initialize(self, listPitches, listQualities, currentMode):
         """ Allocate items according to the current definitions """
         while len(self.elements) < self.nbElements:
-            # TODO: Prevent repetitions
             self.AddElement(listPitches, listQualities, currentMode)
         
     def Next(self):

@@ -420,11 +420,14 @@ class ChordTraining(wx.Frame):
 
 		wx.ID_PAUSE = wx.NewId()
 		fileMenu.Append(wx.ID_PAUSE, '&Pause')
+		wx.ID_REDRAW = wx.NewId()
+		fileMenu.Append(wx.ID_REDRAW, '&Redraw layout')
 		fileMenu.Append(wx.ID_OPEN, '&Open')
 		fileMenu.Append(wx.ID_SAVE, '&Save')
 		fileMenu.Append(wx.ID_SAVEAS, 'Save &as...')
 			
 		self.Bind(wx.EVT_MENU, self.TogglePause, id=wx.ID_PAUSE)
+		self.Bind(wx.EVT_MENU, self.FlagLayoutRedraw, id=wx.ID_REDRAW)
 		self.Bind(wx.EVT_MENU, self.LoadFile, id=wx.ID_OPEN)
 		self.Bind(wx.EVT_MENU, self.settings.SaveSettings, id=wx.ID_SAVE)
 		self.Bind(wx.EVT_MENU, self.SaveFile, id=wx.ID_SAVEAS)
@@ -1061,6 +1064,9 @@ class ChordTraining(wx.Frame):
 			label = ""
 		self.status.SetLabel(label)
 
+	def FlagLayoutRedraw(self, e):
+		self.changedLayout = True
+
 	def NextChord(self, e):
 		# Do not explicitly call the function the first time
 		if not self.manualChange:
@@ -1096,6 +1102,8 @@ class ChordTraining(wx.Frame):
 			self.PrevChord(e)
 		elif key == wx.WXK_RIGHT:
 			self.NextChord(e)
+		elif key == wx.WXK_F5:
+			self.FlagLayoutRedraw(e)
 	
 	def AvailablePitches(self):
 		list = []
