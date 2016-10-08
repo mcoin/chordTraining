@@ -458,13 +458,7 @@ class ChordTraining(wx.Frame):
 		self.tonesMenu = wx.Menu()
 		self.tonesMenuId = {}
 		self.tonesMenuIdRev = {}
-		for tone in self.pitches.keys():
-			self.tonesMenuId[tone] = wx.NewId()
-			self.tonesMenuIdRev[self.tonesMenuId[tone]] = tone
-			self.tonesMenu.Append(self.tonesMenuId[tone], self.conv.GetPitchName(tone), "", wx.ITEM_CHECK)
-			self.tonesMenu.Check(self.tonesMenuId[tone], self.pitches[tone])
-			self.Bind(wx.EVT_MENU, self.MenuSetTones, id=self.tonesMenuId[tone])
-			
+
 		self.tonesFuncId = {\
 						"all" : wx.NewId(),\
 						"none" : wx.NewId(),\
@@ -480,8 +474,6 @@ class ChordTraining(wx.Frame):
 						"7-12" : wx.NewId()\
 						}
 
-		self.tonesMenu.AppendSeparator()
-
 		self.tonesMenu.Append(self.tonesFuncId["all"], "All")
 		self.Bind(wx.EVT_MENU, self.MenuSetTones, id=self.tonesFuncId["all"])
 		self.tonesMenu.Append(self.tonesFuncId["none"], "None")
@@ -489,31 +481,42 @@ class ChordTraining(wx.Frame):
 		self.tonesMenu.Append(self.tonesFuncId["invert"], "Invert")
 		self.Bind(wx.EVT_MENU, self.MenuSetTones, id=self.tonesFuncId["invert"])
 					
-		self.tonesMenu.AppendSeparator()
+		self.toneGroupsMenu = wx.Menu()
 
-		self.tonesMenu.Append(self.tonesFuncId["1-3"], "1-3")
+		self.tonesMenu.AppendMenu(wx.ID_ANY, '&Groups', self.toneGroupsMenu)
+
+		self.tonesMenu.AppendSeparator()
+		
+		for tone in self.pitches.keys():
+			self.tonesMenuId[tone] = wx.NewId()
+			self.tonesMenuIdRev[self.tonesMenuId[tone]] = tone
+			self.tonesMenu.Append(self.tonesMenuId[tone], self.conv.GetPitchName(tone), "", wx.ITEM_CHECK)
+			self.tonesMenu.Check(self.tonesMenuId[tone], self.pitches[tone])
+			self.Bind(wx.EVT_MENU, self.MenuSetTones, id=self.tonesMenuId[tone])
+			
+		self.toneGroupsMenu.Append(self.tonesFuncId["1-3"], "1-3")
 		self.Bind(wx.EVT_MENU, self.MenuSetTones, id=self.tonesFuncId["1-3"])
-		self.tonesMenu.Append(self.tonesFuncId["4-6"], "4-6")
+		self.toneGroupsMenu.Append(self.tonesFuncId["4-6"], "4-6")
 		self.Bind(wx.EVT_MENU, self.MenuSetTones, id=self.tonesFuncId["4-6"])
-		self.tonesMenu.Append(self.tonesFuncId["7-9"], "7-9")
+		self.toneGroupsMenu.Append(self.tonesFuncId["7-9"], "7-9")
 		self.Bind(wx.EVT_MENU, self.MenuSetTones, id=self.tonesFuncId["7-9"])
-		self.tonesMenu.Append(self.tonesFuncId["10-12"], "10-12")
+		self.toneGroupsMenu.Append(self.tonesFuncId["10-12"], "10-12")
 		self.Bind(wx.EVT_MENU, self.MenuSetTones, id=self.tonesFuncId["10-12"])
 					
-		self.tonesMenu.AppendSeparator()
+		self.toneGroupsMenu.AppendSeparator()
 
-		self.tonesMenu.Append(self.tonesFuncId["1-4"], "1-4")
+		self.toneGroupsMenu.Append(self.tonesFuncId["1-4"], "1-4")
 		self.Bind(wx.EVT_MENU, self.MenuSetTones, id=self.tonesFuncId["1-4"])
-		self.tonesMenu.Append(self.tonesFuncId["5-8"], "5-8")
+		self.toneGroupsMenu.Append(self.tonesFuncId["5-8"], "5-8")
 		self.Bind(wx.EVT_MENU, self.MenuSetTones, id=self.tonesFuncId["5-8"])
-		self.tonesMenu.Append(self.tonesFuncId["9-12"], "9-12")
+		self.toneGroupsMenu.Append(self.tonesFuncId["9-12"], "9-12")
 		self.Bind(wx.EVT_MENU, self.MenuSetTones, id=self.tonesFuncId["9-12"])
 
-		self.tonesMenu.AppendSeparator()
+		self.toneGroupsMenu.AppendSeparator()
 
-		self.tonesMenu.Append(self.tonesFuncId["1-6"], "1-6")
+		self.toneGroupsMenu.Append(self.tonesFuncId["1-6"], "1-6")
 		self.Bind(wx.EVT_MENU, self.MenuSetTones, id=self.tonesFuncId["1-6"])
-		self.tonesMenu.Append(self.tonesFuncId["7-12"], "7-12")
+		self.toneGroupsMenu.Append(self.tonesFuncId["7-12"], "7-12")
 		self.Bind(wx.EVT_MENU, self.MenuSetTones, id=self.tonesFuncId["7-12"])
 
 		menubar.Append(self.tonesMenu, '&Tones')
@@ -522,14 +525,7 @@ class ChordTraining(wx.Frame):
 		self.qualitiesMenu = wx.Menu()
 		self.qualitiesMenuId = {}
 		self.qualitiesMenuIdRev = {}
-		for quality in self.qualities.keys():
-			self.qualitiesMenuId[quality] = wx.NewId()
-			self.qualitiesMenuIdRev[self.qualitiesMenuId[quality]] = quality
-			self.qualitiesMenu.Append(self.qualitiesMenuId[quality], self.conv.GetQualityName(quality), "", wx.ITEM_CHECK)
-			self.qualitiesMenu.Check(self.qualitiesMenuId[quality], self.qualities[quality])
-			self.Bind(wx.EVT_MENU, self.MenuSetQualities, id=self.qualitiesMenuId[quality])
-			self.qualitiesMenu.Enable(self.qualitiesMenuId[quality], self.modes['Chord'])
-				
+
 		self.qualitiesFuncId = {\
 						"maj" : wx.NewId(),\
 						"min" : wx.NewId(),\
@@ -537,6 +533,11 @@ class ChordTraining(wx.Frame):
 						"all" : wx.NewId(),\
 						"none" : wx.NewId()\
 						}
+
+		self.qualitiesMenu.Append(self.qualitiesFuncId["all"], "All")
+		self.Bind(wx.EVT_MENU, self.MenuSetQualities, id=self.qualitiesFuncId["all"])
+		self.qualitiesMenu.Append(self.qualitiesFuncId["none"], "None")
+		self.Bind(wx.EVT_MENU, self.MenuSetQualities, id=self.qualitiesFuncId["none"])
 
 		self.qualitiesMenu.AppendSeparator()
 
@@ -549,11 +550,14 @@ class ChordTraining(wx.Frame):
 					
 		self.qualitiesMenu.AppendSeparator()
 
-		self.qualitiesMenu.Append(self.qualitiesFuncId["all"], "All")
-		self.Bind(wx.EVT_MENU, self.MenuSetQualities, id=self.qualitiesFuncId["all"])
-		self.qualitiesMenu.Append(self.qualitiesFuncId["none"], "None")
-		self.Bind(wx.EVT_MENU, self.MenuSetQualities, id=self.qualitiesFuncId["none"])
-
+		for quality in self.qualities.keys():
+			self.qualitiesMenuId[quality] = wx.NewId()
+			self.qualitiesMenuIdRev[self.qualitiesMenuId[quality]] = quality
+			self.qualitiesMenu.Append(self.qualitiesMenuId[quality], self.conv.GetQualityName(quality), "", wx.ITEM_CHECK)
+			self.qualitiesMenu.Check(self.qualitiesMenuId[quality], self.qualities[quality])
+			self.Bind(wx.EVT_MENU, self.MenuSetQualities, id=self.qualitiesMenuId[quality])
+			self.qualitiesMenu.Enable(self.qualitiesMenuId[quality], self.modes['Chord'])
+				
 		
 		menubar.Append(self.qualitiesMenu, '&Qualities')
 			
@@ -622,6 +626,7 @@ class ChordTraining(wx.Frame):
 		self.settingsMenu.AppendSeparator()
 
 		self.settingsMenu.AppendMenu(wx.ID_ANY, '&Font size', self.fontSizeMenu)
+
 		self.settingsMenu.AppendMenu(wx.ID_ANY, '&Score resolution', self.scoreResMenu)
 
 		self.lilypondPathMenu = wx.Menu()
