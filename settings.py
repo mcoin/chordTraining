@@ -26,7 +26,9 @@ class Settings():
         f.write("%d\n" % self.chordTraining.duration)
         f.write("WindowSize:\n")
         size = self.chordTraining.GetSize()
-        f.write("\t%d\t%d\n" % (size.x, size.y))
+        # Add a pixel to the actual size to prevent messed up layout upon restart
+        correction  = 1
+        f.write("\t%d\t%d\n" % (size.x + correction, size.y + correction))
         f.write("FontSize:\n")
         f.write("\t%d\n" % self.chordTraining.fontSize)
         f.write("ScoreResolution:\n")

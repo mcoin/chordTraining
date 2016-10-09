@@ -730,12 +730,12 @@ class ChordTraining(wx.Frame):
 
 		self.layout.Add(hboxGauge,0,wx.EXPAND) # add gauge
 		
-		self.maxWidthScale = wx.Size(5, 0)
-		self.maxHeightScale = wx.Size(0, 5)
+		self.maxWidthChord = wx.Size(5, 0)
+		self.maxHeightChord = wx.Size(0, 5)
 
 		hboxImgSize = wx.BoxSizer(wx.HORIZONTAL)
 		hboxImgSize.Add(hSpacer, 0, wx.EXPAND|wx.ALL,10)
-		hboxImgSize.Add(self.maxWidthScale, 1, wx.EXPAND|wx.ALL, 10) # add image
+		hboxImgSize.Add(self.maxWidthChord, 1, wx.EXPAND|wx.ALL, 10) # add image
 		hboxImgSize.Add(hSpacer, 0, wx.EXPAND|wx.ALL,10)
 		self.layout.Add(hboxImgSize, 0, wx.EXPAND)
 			
@@ -744,7 +744,7 @@ class ChordTraining(wx.Frame):
 		# Chord score
 		self.layout.Add(vSpacer)
 		hboxImg = wx.BoxSizer(wx.HORIZONTAL)
-		hboxImg.Add(self.maxHeightScale, 0, wx.EXPAND|wx.ALL,10)
+		hboxImg.Add(self.maxHeightChord, 0, wx.EXPAND|wx.ALL,10)
 		hboxImg.Add(hSpacer, 0, wx.EXPAND|wx.ALL,10)
 		hboxImg.Add(self.chordImage, 1, wx.EXPAND | wx.ALL, 10) # add image
 		hboxImg.Add(hSpacer, 0, wx.EXPAND|wx.ALL,10)
@@ -756,7 +756,7 @@ class ChordTraining(wx.Frame):
 
 		self.maxWidthScale = wx.Size(5, 0)
 		self.maxHeightScale = wx.Size(0, 5)
- 
+  
 		hboxImgSize2 = wx.BoxSizer(wx.HORIZONTAL)
 		hboxImgSize2.Add(hSpacer, 0, wx.EXPAND|wx.ALL, 10)
 		hboxImgSize2.Add(self.maxWidthScale, 1, wx.EXPAND|wx.ALL, 10) # add image
@@ -825,10 +825,43 @@ class ChordTraining(wx.Frame):
 		
 		return (maxWidth, maxHeight)
 	
+	def GetMaxSizeScale(self):
+		# Determine the size of the largest image
+		maxWidth = 5
+		maxHeight = 5
+
+		chord = Chord()
+		
+		listPitches = self.AvailablePitches()
+		
+		mode = self.CurrentMode()
+		chord.SetMode(mode)
+		
+		listQualities = self.AvailableQualities()
+			
+		for pitch in listPitches:
+			chord.SetPitch(pitch)
+			for quality in listQualities:
+				chord.SetQuality(quality)
+				imageFile = chord.GetScaleImgName(self.scoreRes)
+				imageFile = os.path.join(self.directory, imageFile)
+				try:
+					png = wx.Image(imageFile, wx.BITMAP_TYPE_ANY).ConvertToBitmap()
+					maxWidth = max(maxWidth, png.GetWidth())
+					maxHeight = max(maxHeight, png.GetHeight())
+				except:
+					pass
+		
+		return (maxWidth, maxHeight)
+	
 	def FitLayout(self):
 		"""Update layout when some objects changed size"""
 		
 		(maxWidth, maxHeight) = self.GetMaxSizeChord()
+		self.maxWidthChord = wx.Size(maxWidth, 0)
+		self.maxHeightChord = wx.Size(0, maxHeight)
+
+		(maxWidth, maxHeight) = self.GetMaxSizeScale()
 		self.maxWidthScale = wx.Size(maxWidth, 0)
 		self.maxHeightScale = wx.Size(0, maxHeight)
 
